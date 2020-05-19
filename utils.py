@@ -1,14 +1,22 @@
 import torch
 import os
+import random
 import shutil
+from torch.autograd import Variable
 from torchvision.datasets.folder import DatasetFolder, IMG_EXTENSIONS, default_loader
+
+def gaussian_noise(input, mean, stddev, alpha=0.8):
+    p = random.random()
+    if p < alpha:
+        noise = Variable(input.data.new(input.size()).normal_(mean, stddev))
+        return input + noise
+    return input
 
 def save_checkpoint(state, is_best, save_path=''):
     torch.save(state, os.path.join(save_path, 'checkpoint.pth.tar'))
     if is_best:
         filename = os.path.join(save_path, 'checkpoint.pth.tar')
         shutil.copyfile(filename, os.path.join(save_path, 'model_best.pth.tar'))
-
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""

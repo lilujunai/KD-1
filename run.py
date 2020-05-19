@@ -1,8 +1,8 @@
-from utils import AverageMeter, ProgressMeter, accuracy
 import torch
 import time
 import torch.nn as nn
 from torch.autograd import Variable
+from .utils import AverageMeter, ProgressMeter, accuracy, gaussian_noise
 import torch.nn.functional as F
 
 def kd_criterion(o_student, o_teacher, labels, T=3, w=0.8):
@@ -40,6 +40,7 @@ def train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args):
         # compute output
         output = model(images)
         o_teacher = Variable(teacher(images), requires_grad=False)
+        o_teacher = gaussian_noise(o_teacher, mean=0, stddev=0.8, alpha=0.8)
         #o_teacher = torch.from_numpy(o_teacher_label_train[idx]).cuda()
 
         loss = criterion(output, o_teacher, target)

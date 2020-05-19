@@ -230,16 +230,15 @@ def main_worker(gpu, ngpus_per_node, args):
             if args.kd:
                 teacher = torch.nn.DataParallel(teacher).cuda()
 
-    # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+    # define loss function (criterion) and optimizer, scheduler
     if args.kd:
         criterion = kd_criterion
-        #criterion = kd_criterion
+    else:
+        criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
-
     scheduler = MultiStepLR(optimizer, milestones=args.schedule, gamma=args.gamma)
 
     # optionally resume from a checkpoint
@@ -308,6 +307,7 @@ def main_worker(gpu, ngpus_per_node, args):
             validate(val_loader, model, criterion, args)
         return
 
+    # Start training
     for epoch in range(args.start_epoch, args.epochs):
         scheduler.step()
 
