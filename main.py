@@ -2,6 +2,7 @@ import argparse
 import os
 import random
 import warnings
+import subprocess
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -84,13 +85,14 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
 parser.add_argument('--kd', action='store_true')
+parser.add_argument('--write_log', action='store_true', help='write out logs as txt file')
 parser.add_argument('--teacher_arch', default='resnet152',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: resnet152)')
 parser.add_argument('--gamma', type=float, default=0.1, help='LR is multiplied by gamma at scheduled epochs.')
-parser.add_argument('--schedule', type=int, nargs='+', default=[3, 5],
+parser.add_argument('--schedule', type=int, nargs='+', default=[2,5,7],
                     help='Decrease learning rate at these epochs.')
 parser.add_argument('--save_path', default='', type=str)
 
@@ -308,19 +310,25 @@ def main_worker(gpu, ngpus_per_node, args):
         return
 
     # Start training
+    if args.write_log:
+        bashCommand = 'script {}'.format(args.save_path)
+        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+        output, error = process.communicate()
+
     for epoch in range(args.start_epoch, args.epochs):
-        scheduler.step()
+
 
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
         # train for one epoch
         if args.kd:
-            train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args, val_loader)
-            acc1 = validate(val_loader, model, criterion, args)
+            train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args)
+            acc1 = validate_kd(val_loader, teacher, model, criterion, args)
+
         else:
             train(train_loader, model, criterion, optimizer, epoch, args)
-            acc1 = validate_kd(val_loader, teacher, model, criterion, args)
+            acc1 = validate(val_loader, model, criterion, args)
 
         # remember best acc@1 and save checkpoint
         #writer.add_scalars('acc1', acc1, epoch)
@@ -337,6 +345,12 @@ def main_worker(gpu, ngpus_per_node, args):
                 'optimizer' : optimizer.state_dict(),
             }, is_best, args.save_path)
 
+        scheduler.step()
+
+    if args.write_log:
+        bashCommand = 'exit'
+        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+        output, error = process.communicate()
 
 if __name__ == '__main__':
     main()

@@ -2,8 +2,8 @@ import torch
 import time
 import torch.nn as nn
 from torch.autograd import Variable
-from .utils import AverageMeter, ProgressMeter, accuracy, gaussian_noise
 import torch.nn.functional as F
+from utils import AverageMeter, ProgressMeter, gaussian_noise, accuracy
 
 def kd_criterion(o_student, o_teacher, labels, T=3, w=0.8):
 
@@ -119,7 +119,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     model.train()
 
     end = time.time()
-    for i, (images, target) in enumerate(train_loader):
+    for i, (images, target, idx) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -164,7 +164,7 @@ def validate(val_loader, model, criterion, args):
 
     with torch.no_grad():
         end = time.time()
-        for i, (images, target) in enumerate(val_loader):
+        for i, (images, target, idx) in enumerate(val_loader):
             if args.gpu is not None:
                 images = images.cuda(args.gpu, non_blocking=True)
             target = target.cuda(args.gpu, non_blocking=True)
