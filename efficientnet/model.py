@@ -33,6 +33,7 @@ class MBConvBlock(nn.Module):
         self._bn_eps = global_params.batch_norm_epsilon
         self.has_se = (self._block_args.se_ratio is not None) and (0 < self._block_args.se_ratio <= 1)
         self.id_skip = block_args.id_skip  # skip connection and drop connect
+        self.feature_input_size = [56, 28, 14, 7] # output sizes we are looking for overhaul distillation
 
         # Get static or dynamic convolution depending on image size
         Conv2d = get_same_padding_conv2d(image_size=global_params.image_size)
@@ -70,12 +71,20 @@ class MBConvBlock(nn.Module):
         :param drop_connect_rate: drop connect rate (float, between 0 and 1)
         :return: output of block
         """
-
+        feature = None
         # Expansion and Depthwise Convolution
         x = inputs
+        x_shape = x.shape[3]
         if self._block_args.expand_ratio != 1:
             x = self._swish(self._bn0(self._expand_conv(inputs)))
         x = self._swish(self._bn1(self._depthwise_conv(x)))
+
+        # see if input and output sizes are different and is the size we are looking for
+        check_channel = x_shape != x.shape[3]
+        if check_channel:
+            x_shape = x.shape[3]
+            if x_shape in self.feature_input_size:
+                feature = x
 
         # Squeeze and Excitation
         if self.has_se:
@@ -91,7 +100,7 @@ class MBConvBlock(nn.Module):
             if drop_connect_rate:
                 x = drop_connect(x, p=drop_connect_rate, training=self.training)
             x = x + inputs  # skip connection
-        return x
+        return x, feature
 
     def set_swish(self, memory_efficient=True):
         """Sets swish function as memory efficient (for training) or standard (for export)"""
@@ -167,7 +176,6 @@ class EfficientNet(nn.Module):
         for block in self._blocks:
             block.set_swish(memory_efficient)
 
-
     def extract_features(self, inputs):
         """ Returns output of the final convolution layer """
 
@@ -179,12 +187,38 @@ class EfficientNet(nn.Module):
             drop_connect_rate = self._global_params.drop_connect_rate
             if drop_connect_rate:
                 drop_connect_rate *= float(idx) / len(self._blocks)
-            x = block(x, drop_connect_rate=drop_connect_rate)
+            x, _ = block(x, drop_connect_rate=drop_connect_rate)
 
         # Head
         x = self._swish(self._bn1(self._conv_head(x)))
 
         return x
+
+    # method for distillation
+    def extract_feature(self, inputs):
+        features = []
+        bs = inputs.size(0)
+        x = self._swish(self._bn0(self._conv_stem(inputs)))
+
+        for idx, block in enumerate(self._blocks):
+            drop_connect_rate = self._global_params.drop_connect_rate
+            if drop_connect_rate:
+                drop_connect_rate *= float(idx) / len(self._blocks)
+            x, feat = block(x, drop_connect_rate=drop_connect_rate)
+            # add if feature is present
+            if feat is not None:
+                features.append(feat)
+
+        x = self._swish(self._bn1(self._conv_head(x)))
+        x = self._avg_pooling(x)
+        x = x.view(bs, -1)
+        x = self._dropout(x)
+        x = self._fc(x)
+        return features, x
+
+    # only for eff-b0 for now
+    def get_channel_num(self):
+        return [96, 144, 240, 672]
 
     def forward(self, inputs):
         """ Calls extract_features to extract features, applies final linear layer, and returns logits. """

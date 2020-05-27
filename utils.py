@@ -6,10 +6,11 @@ from torch.autograd import Variable
 from torchvision.datasets.folder import DatasetFolder, IMG_EXTENSIONS, default_loader
 
 def gaussian_noise(input, mean, stddev, alpha=0.8):
-    p = random.random()
-    if p < alpha:
-        noise = Variable(input.data.new(input.size()).normal_(mean, stddev))
-        return input + noise
+    for idx, batch in enumerate(input):
+        p = random.random()
+        if p < alpha:
+            noise = Variable(batch.data.new(batch.size()).normal_(mean, stddev))
+            input[idx] += noise
     return input
 
 def save_checkpoint(state, is_best, save_path=''):

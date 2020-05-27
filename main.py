@@ -2,7 +2,6 @@ import argparse
 import os
 import random
 import warnings
-import subprocess
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -17,8 +16,10 @@ import torchvision.models as models
 from utils import ImageFolder_iid, save_checkpoint
 from efficientnet.model import EfficientNet
 from run import train_kd, validate_kd, train, validate, kd_criterion
-#from kd_loss import KD_Loss
 from torch.optim.lr_scheduler import MultiStepLR
+import resnet
+from distiller import train_with_overhaul, validate_overhaul, Distiller
+
 from torch.utils.tensorboard import SummaryWriter
 #writer = SummaryWriter()
 
@@ -59,7 +60,7 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=10, type=int,
+parser.add_argument('-p', '--print-freq', default=100, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -85,14 +86,14 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
 parser.add_argument('--kd', action='store_true')
-parser.add_argument('--write_log', action='store_true', help='write out logs as txt file')
+parser.add_argument('--overhaul', action='store_true')
 parser.add_argument('--teacher_arch', default='resnet152',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: resnet152)')
 parser.add_argument('--gamma', type=float, default=0.1, help='LR is multiplied by gamma at scheduled epochs.')
-parser.add_argument('--schedule', type=int, nargs='+', default=[2,5,7],
+parser.add_argument('--schedule', type=int, nargs='+', default=[4,7,9],
                     help='Decrease learning rate at these epochs.')
 parser.add_argument('--save_path', default='', type=str)
 
@@ -108,6 +109,10 @@ def kd_criterion(o_student, o_teacher, labels, T=3, a=0.8):
 
 def main():
     args = parser.parse_args()
+    if (not args.kd) and args.overhaul:
+        print('overhaul option should be given with kd option')
+        return
+
     if args.seed is not None:
         random.seed(args.seed)
         torch.manual_seed(args.seed)
@@ -157,7 +162,8 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
 
-    # create model
+# create model
+#####################################################################################
     if args.pretrained:
         if args.arch.startswith('efficientnet-b'):
             print('=> using pre-trained {}'.format(args.arch))
@@ -186,10 +192,16 @@ def main_worker(gpu, ngpus_per_node, args):
             teacher = torch.hub.load('facebookresearch/WSL-Images', '{}_wsl'.format(args.teacher_arch))
             teacher.eval()
             print('=> {} loaded'.format(args.teacher_arch))
+        elif args.overhaul:
+            teacher = resnet.resnet152(pretrained=True)
         else:
             teacher = models.__dict__[args.teacher_arch](pretrained=True)
             teacher.eval()
             print('=> {} loaded'.format(args.teacher_arch))
+
+        if args.overhaul:
+            print('=> using overhaul distillation')
+            d_net = Distiller(teacher, model)
 
         '''
         print('=> loading teacher labels...')
@@ -200,7 +212,6 @@ def main_worker(gpu, ngpus_per_node, args):
         print('=> loading done')
         print('teacher label shape (train, val):', o_teacher_label_train.shape, o_teacher_label_val.shape)
         '''
-
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
         # should always set the single device scope, otherwise,
@@ -231,16 +242,31 @@ def main_worker(gpu, ngpus_per_node, args):
             model = torch.nn.DataParallel(model).cuda()
             if args.kd:
                 teacher = torch.nn.DataParallel(teacher).cuda()
+                if args.overhaul:
+                    d_net = torch.nn.DataParallel(d_net).cuda()
+#####################################################################################
 
-    # define loss function (criterion) and optimizer, scheduler
+
+# define loss function (criterion) and optimizer, scheduler
+#####################################################################################
     if args.kd:
         criterion = kd_criterion
+        if args.overhaul:
+            criterion = nn.CrossEntropyLoss().cuda(args.gpu)
     else:
         criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+
+    if args.overhaul:
+        optimizer = torch.optim.SGD(list(model.parameters()) + list(d_net.module.Connectors.parameters()), args.lr,
+                                    momentum=args.momentum,
+                                    weight_decay=args.weight_decay)  # nesterov
+
+    else:
+        optimizer = torch.optim.SGD(model.parameters(), args.lr,
+                                    momentum=args.momentum,
+                                    weight_decay=args.weight_decay)
+
     scheduler = MultiStepLR(optimizer, milestones=args.schedule, gamma=args.gamma)
 
     # optionally resume from a checkpoint
@@ -266,8 +292,11 @@ def main_worker(gpu, ngpus_per_node, args):
             print("=> no checkpoint found at '{}'".format(args.resume))
 
     cudnn.benchmark = True
+#####################################################################################
 
-    # Data loading code
+
+# Data loading code
+#####################################################################################
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
 
@@ -301,30 +330,26 @@ def main_worker(gpu, ngpus_per_node, args):
         ])),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
+#####################################################################################
 
     if args.evaluate:
-        if args.kd:
-            validate_kd(train_loader, teacher, model, criterion, args)
-        else:
-            validate(val_loader, model, criterion, args)
-        return
+        validate(val_loader, model, criterion, args)
 
-    # Start training
-    if args.write_log:
-        bashCommand = 'script {}'.format(args.save_path)
-        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-        output, error = process.communicate()
-
+# Start training
+#####################################################################################
     for epoch in range(args.start_epoch, args.epochs):
-
 
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
         # train for one epoch
         if args.kd:
-            train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args)
-            acc1 = validate_kd(val_loader, teacher, model, criterion, args)
+            if args.overhaul:
+                train_with_overhaul(train_loader, d_net, optimizer, criterion, epoch, args)
+                acc1 = validate_overhaul(val_loader, model, criterion, epoch, args)
+            else:
+                train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args)
+                acc1 = validate_kd(val_loader, teacher, model, criterion, args)
 
         else:
             train(train_loader, model, criterion, optimizer, epoch, args)
@@ -346,11 +371,7 @@ def main_worker(gpu, ngpus_per_node, args):
             }, is_best, args.save_path)
 
         scheduler.step()
-
-    if args.write_log:
-        bashCommand = 'exit'
-        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-        output, error = process.communicate()
+#####################################################################################
 
 if __name__ == '__main__':
     main()

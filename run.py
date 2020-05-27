@@ -40,7 +40,10 @@ def train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args):
         # compute output
         output = model(images)
         o_teacher = Variable(teacher(images), requires_grad=False)
-        o_teacher = gaussian_noise(o_teacher, mean=0, stddev=0.8, alpha=0.8)
+        o_teacher = gaussian_noise(o_teacher, mean=0, stddev=0.5, alpha=0.4)
+        # 0.1, 0.4 76.640
+        # 0.3, 0.4 76.630
+        # 0.5, 0.4 76.632
         #o_teacher = torch.from_numpy(o_teacher_label_train[idx]).cuda()
 
         loss = criterion(output, o_teacher, target)

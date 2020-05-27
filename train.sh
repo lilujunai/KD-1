@@ -1,10 +1,10 @@
 MODEL='efficientnet-b0'
 TEACHER='resnet152'
-BATCH_SIZE=68
+BATCH_SIZE=54
 
 GPUS=0,1
 
-CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /home/taeil/research/data/Imagenet      \
+CUDA_VISIBLE_DEVICES=$GPUS python3 main.py > ${TEACHER}_${MODEL}.txt /home/taeil/research/data/Imagenet      \
         --arch $MODEL                                           \
         --workers 55                                            \
         --T 3                                                   \
@@ -14,6 +14,6 @@ CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /home/taeil/research/data/Imagenet   
         --lr 0.000001                                           \
         --pretrained                                            \
         --kd                                                    \
-        --write_log                                             \
-        --save_path "weights/${MODEL}_kd_${TEACHER}" --epochs 10
+        --overhaul                                              \
+        --save_path "weights/${TEACHER}_${MODEL}" --epochs 10
 
