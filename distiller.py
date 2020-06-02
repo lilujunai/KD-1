@@ -137,8 +137,8 @@ class Distiller(nn.Module):
         #     print('s_feats:', s_feats[i].shape)
         #     print('t_feats:', t_feats[i].shape)
     def forward(self, x):
-
-        t_feats, t_out = self.t_net.extract_feature(x, preReLU=True)
+        with torch.no_grad():
+            t_feats, t_out = self.t_net.extract_feature(x, preReLU=True)
         s_feats, s_out = self.s_net.extract_feature(x)
         feat_num = len(t_feats)
 

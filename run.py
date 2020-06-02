@@ -39,8 +39,9 @@ def train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args):
 
         # compute output
         output = model(images)
-        o_teacher = Variable(teacher(images), requires_grad=False)
-        o_teacher = gaussian_noise(o_teacher, mean=0, stddev=0.5, alpha=0.4)
+        with torch.no_grad():
+            o_teacher = teacher(images)
+            #o_teacher = gaussian_noise(o_teacher, mean=0, stddev=0.5, alpha=0.4)
         # 0.1, 0.4 76.640
         # 0.3, 0.4 76.630
         # 0.5, 0.4 76.632

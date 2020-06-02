@@ -49,7 +49,7 @@ parser.add_argument('--epochs', default=10, type=int, metavar='N',
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
 parser.add_argument('-b', '--batch-size', default=256, type=int,
-                    metavar='N',
+                  metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
                          'using Data Parallel or Distributed Data Parallel')
@@ -93,7 +93,7 @@ parser.add_argument('--teacher_arch', default='resnet152',
                         ' | '.join(model_names) +
                         ' (default: resnet152)')
 parser.add_argument('--gamma', type=float, default=0.1, help='LR is multiplied by gamma at scheduled epochs.')
-parser.add_argument('--schedule', type=int, nargs='+', default=[4,7,9],
+parser.add_argument('--schedule', type=int, nargs='+', default=[150,250,350],
                     help='Decrease learning rate at these epochs.')
 parser.add_argument('--save_path', default='', type=str)
 
@@ -268,7 +268,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                     weight_decay=args.weight_decay)
 
     scheduler = MultiStepLR(optimizer, milestones=args.schedule, gamma=args.gamma)
-
+    #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
@@ -285,7 +285,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 # best_acc1 may be from a checkpoint from a different GPU
                 best_acc1 = best_acc1.to(args.gpu)
             model.load_state_dict(checkpoint['state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
+            otimizer.load_state_dict(checkpoint['optimizer'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:

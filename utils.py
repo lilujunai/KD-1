@@ -9,7 +9,7 @@ def gaussian_noise(input, mean, stddev, alpha=0.8):
     for idx, batch in enumerate(input):
         p = random.random()
         if p < alpha:
-            noise = Variable(batch.data.new(batch.size()).normal_(mean, stddev))
+            noise = batch.data.new(batch.size()).normal_(mean, stddev)
             input[idx] += noise
     return input
 
