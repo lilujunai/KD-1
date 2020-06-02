@@ -6,7 +6,7 @@ GPUS=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
 
 CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /home/vision/keti/data/Imagenet      \
         --arch $MODEL                                           \
-        --workers 55                                            \
+        --workers 16						\
         --T 3                                                   \
         --w 0.8                                                 \
         --teacher_arch $TEACHER                                 \
