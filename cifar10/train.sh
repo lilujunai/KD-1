@@ -1,4 +1,4 @@
-GPUS=14,15,16,17,18
+GPUS=0,1
 
 CUDA_VISIBLE_DEVICES=$GPUS python3 main.py  
 
