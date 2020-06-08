@@ -14,7 +14,7 @@ import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.models as models
 from cifar10_models import *
-from utils import ImageFolder_iid, save_checkpoint
+from utils import ImageFolder_iid, save_checkpoint, bn_momentum
 from efficientnet.model import EfficientNet
 from run import train_kd, validate_kd, train, validate, kd_criterion
 from torch.optim.lr_scheduler import MultiStepLR
@@ -182,7 +182,7 @@ def main_worker(gpu, ngpus_per_node, args):
         else:
             print("=> creating model '{}'".format(args.arch))
             model = models.__dict__[args.arch]()
-
+    # model.apply(bn_momentum)
     student_name = model.__class__.__name__
     # create teacher model
     if args.kd:

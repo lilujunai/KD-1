@@ -5,7 +5,9 @@ import shutil
 from torch.autograd import Variable
 from torchvision.datasets.folder import DatasetFolder, IMG_EXTENSIONS, default_loader
 from termcolor import colored
-
+def bn_momentum(m):
+    if isinstance(m, nn.BatchNorm2d):
+        m.momentum = 0.9
 def gaussian_noise(input, mean, stddev, alpha=0.8):
     for idx, batch in enumerate(input):
         p = random.random()
