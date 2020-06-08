@@ -34,7 +34,7 @@ def train_with_overhaul(train_loader, d_net, optimizer, criterion_CE, epoch, arg
         optimizer.step()
 
         if i % args.print_freq == 0:
-            print('Train with distillation: [Epoch %d/%d][Batch %d/%d]\t Loss %.3f, Top 1-error %.3f, Top 5-error %.3f' %
+            print('Train with distillation: [Epoch %d/%d][Batch %d/%d]\t Loss %.3f, Top 1 %.3f, Top 5 %.3f' %
                   (epoch, args.epochs, i, len(train_loader), train_loss.avg, top1.avg, top5.avg))
 
 def validate_overhaul(val_loader, model, criterion_CE, epoch, args):
@@ -51,11 +51,10 @@ def validate_overhaul(val_loader, model, criterion_CE, epoch, args):
         target = target.cuda()
 
         # for PyTorch 0.4.x, volatile=True is replaced by with torch.no.grad(), so uncomment the followings:
-        with torch.no_grad():
-            input_var = torch.autograd.Variable(input)
-            target_var = torch.autograd.Variable(target)
-            output = model(input_var)
-            loss = criterion_CE(output, target_var)
+        input_var = torch.autograd.Variable(input)
+        target_var = torch.autograd.Variable(target)
+        output = model(input_var)
+        loss = criterion_CE(output, target_var)
 
         # measure accuracy and record loss
         err1, err5 = accuracy(output.data, target, topk=(1, 5))
@@ -72,11 +71,11 @@ def validate_overhaul(val_loader, model, criterion_CE, epoch, args):
             print('Test (on val set): [Epoch {0}/{1}][Batch {2}/{3}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'Top 1-err {top1.val:.4f} ({top1.avg:.4f})\t'
-                  'Top 5-err {top5.val:.4f} ({top5.avg:.4f})'.format(
+                  'Top 1 {top1.val:.4f} ({top1.avg:.4f})\t'
+                  'Top 5 {top5.val:.4f} ({top5.avg:.4f})'.format(
                    epoch, args.epochs, i, len(val_loader), batch_time=batch_time, loss=losses, top1=top1, top5=top5))
 
-    print('* Epoch: [{0}/{1}]\t Top 1-err {top1.avg:.3f}  Top 5-err {top5.avg:.3f}\t Test Loss {loss.avg:.3f}'
+    print('* Epoch: [{0}/{1}]\t Top 1 {top1.avg:.3f}  Top 5 {top5.avg:.3f}\t Test Loss {loss.avg:.3f}'
           .format(epoch, args.epochs, top1=top1, top5=top5, loss=losses))
     return top1.avg
 
@@ -123,8 +122,7 @@ class Distiller(nn.Module):
         s_channels = s_net.get_channel_num()
 
         self.Connectors = nn.ModuleList([build_feature_connector(t, s) for t, s in zip(t_channels, s_channels)])
-        with torch.no_grad():
-            teacher_bns = t_net.get_bn_before_relu()
+        teacher_bns = t_net.get_bn_before_relu()
         margins = [get_margin_from_BN(bn) for bn in teacher_bns]
         for i, margin in enumerate(margins):
             self.register_buffer('margin%d' % (i+1), margin.unsqueeze(1).unsqueeze(2).unsqueeze(0).detach())
@@ -133,8 +131,8 @@ class Distiller(nn.Module):
         self.s_net = s_net
 
     def forward(self, x):
-
-        t_feats, t_out = self.t_net.extract_feature(x, preReLU=True)
+        with torch.no_grad():
+            t_feats, t_out = self.t_net.extract_feature(x, preReLU=True)
         s_feats, s_out = self.s_net.extract_feature(x)
         feat_num = len(t_feats)
 

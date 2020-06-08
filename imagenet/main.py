@@ -13,6 +13,7 @@ import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.models as models
+from cifar10_models import *
 from utils import ImageFolder_iid, save_checkpoint
 from efficientnet.model import EfficientNet
 from run import train_kd, validate_kd, train, validate, kd_criterion
@@ -30,7 +31,7 @@ for i in range(8):
     model_names.append('efficientnet-b{}'.format(i))
 model_names.append('resnext101_32x8d')
 model_names.append('resnext101_32x16d')
-
+model_names.append('DenseNet40')
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR',
                     help='path to dataset')
@@ -60,7 +61,7 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=100, type=int,
+parser.add_argument('-p', '--print-freq', default=500, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -175,11 +176,14 @@ def main_worker(gpu, ngpus_per_node, args):
         if args.arch.startswith('efficientnet-b'):
             print("=> creating model {}".format(args.arch))
             model = EfficientNet.from_name(args.arch)
-
+        elif args.arch.startswith('Dense'):
+            print("=> creating model {}".format(args.arch))
+            model = DenseNet40()
         else:
             print("=> creating model '{}'".format(args.arch))
             model = models.__dict__[args.arch]()
 
+    student_name = model.__class__.__name__
     # create teacher model
     if args.kd:
         print('=> loading teacher model')
@@ -198,6 +202,8 @@ def main_worker(gpu, ngpus_per_node, args):
             teacher = models.__dict__[args.teacher_arch](pretrained=True)
             teacher.eval()
             print('=> {} loaded'.format(args.teacher_arch))
+
+        teacher_name = teacher.__class__.__name__
 
         if args.overhaul:
             print('=> using overhaul distillation')
@@ -347,6 +353,7 @@ def main_worker(gpu, ngpus_per_node, args):
             if args.overhaul:
                 train_with_overhaul(train_loader, d_net, optimizer, criterion, epoch, args)
                 acc1 = validate_overhaul(val_loader, model, criterion, epoch, args)
+                pass
             else:
                 train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args)
                 acc1 = validate_kd(val_loader, teacher, model, criterion, args)
@@ -368,7 +375,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc1,
                 'optimizer' : optimizer.state_dict(),
-            }, is_best, args.save_path)
+            }, is_best, args.save_path, args.arch, args.teacher_arch, args.w)
 
         scheduler.step()
 #####################################################################################

@@ -14,6 +14,7 @@ import argparse
 from models import *
 from utils import progress_bar
 from termcolor import colored
+import torch.nn.init as init
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
@@ -24,7 +25,7 @@ args = parser.parse_args()
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
-batch_size = 2000
+batch_size = 300
 # Data
 print('==> Preparing data..')
 transform_train = transforms.Compose([
@@ -32,7 +33,7 @@ transform_train = transforms.Compose([
     #transforms.Resize(224, interpolation=PIL.Image.BICUBIC),
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(15),
-    transforms.RandomAffine(0, shear=5, scale=(0.8, 1.2)),
+    # transforms.RandomAffine(0, shear=5, scale=(0.8, 1.2)),
     transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
     transforms.ToTensor(),
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
@@ -44,21 +45,94 @@ transform_test = transforms.Compose([
 ])
 
 trainset = torchvision.datasets.CIFAR10(
-    root='./data', train=True, download=True, transform=transform_train)
+    root='./data', train=True, download=False, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(
-    trainset, batch_size=batch_size, shuffle=True, num_workers=15)
+    trainset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=15)
 
 testset = torchvision.datasets.CIFAR10(
-    root='./data', train=False, download=True, transform=transform_test)
+    root='./data', train=False, download=False, transform=transform_test)
 testloader = torch.utils.data.DataLoader(
-    testset, batch_size=batch_size, shuffle=False, num_workers=15)
+    testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=15)
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer',
            'dog', 'frog', 'horse', 'ship', 'truck')
 
+def init_weights(m):
+    if isinstance(m, nn.Conv1d):
+        init.normal_(m.weight.data)
+        if m.bias is not None:
+            init.normal_(m.bias.data)
+    elif isinstance(m, nn.Conv2d):
+        init.xavier_normal_(m.weight.data)
+        if m.bias is not None:
+            init.normal_(m.bias.data)
+    elif isinstance(m, nn.Conv3d):
+        init.xavier_normal_(m.weight.data)
+        if m.bias is not None:
+            init.normal_(m.bias.data)
+    elif isinstance(m, nn.ConvTranspose1d):
+        init.normal_(m.weight.data)
+        if m.bias is not None:
+            init.normal_(m.bias.data)
+    elif isinstance(m, nn.ConvTranspose2d):
+        init.xavier_normal_(m.weight.data)
+        if m.bias is not None:
+            init.normal_(m.bias.data)
+    elif isinstance(m, nn.ConvTranspose3d):
+        init.xavier_normal_(m.weight.data)
+        if m.bias is not None:
+            init.normal_(m.bias.data)
+    elif isinstance(m, nn.BatchNorm1d):
+        init.normal_(m.weight.data, mean=1, std=0.02)
+        init.constant_(m.bias.data, 0)
+    elif isinstance(m, nn.BatchNorm2d):
+        init.normal_(m.weight.data, mean=1, std=0.02)
+        init.constant_(m.bias.data, 0)
+    elif isinstance(m, nn.BatchNorm3d):
+        init.normal_(m.weight.data, mean=1, std=0.02)
+        init.constant_(m.bias.data, 0)
+    elif isinstance(m, nn.Linear):
+        init.xavier_normal_(m.weight.data)
+        init.normal_(m.bias.data)
+    elif isinstance(m, nn.LSTM):
+        for param in m.parameters():
+            if len(param.shape) >= 2:
+                init.orthogonal_(param.data)
+            else:
+                init.normal_(param.data)
+    elif isinstance(m, nn.LSTMCell):
+        for param in m.parameters():
+            if len(param.shape) >= 2:
+                init.orthogonal_(param.data)
+            else:
+                init.normal_(param.data)
+    elif isinstance(m, nn.GRU):
+        for param in m.parameters():
+            if len(param.shape) >= 2:
+                init.orthogonal_(param.data)
+            else:
+                init.normal_(param.data)
+    elif isinstance(m, nn.GRUCell):
+        for param in m.parameters():
+            if len(param.shape) >= 2:
+                init.orthogonal_(param.data)
+            else:
+                init.normal_(param.data)
+
+
 # Model
 print('==> Building model..')
-net = EfficientNetB0()
+#net = EfficientNetB0()
+# net = torchvision.models.resnext101_32x8d()
+# net = ResNeXt29_2x64d()
+# net = ResNet152()
+# net = ResNeXt29_32x8d()
+net = DenseNet40()
+# net = resnext101_32x16d_wsl()
+# net.apply(init_weights)
+
+# net.fc = nn.Linear(2048,10)
+
 net = net.to(device)
 if device == 'cuda':
     net = torch.nn.DataParallel(net)
@@ -68,17 +142,17 @@ if args.resume:
     # Load checkpoint.
     print('==> Resuming from checkpoint..')
     assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    checkpoint = torch.load('./checkpoint/ckpt.pth')
+    checkpoint = torch.load('./checkpoint/t29_ckpt.pth')
     net.load_state_dict(checkpoint['net'])
     best_acc = checkpoint['acc']
     start_epoch = checkpoint['epoch']
 
+
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
+optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, nesterov=True)
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
-scheduler1 = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10)
-milestone = np.arange(250,350,1)
-scheduler2 = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[700,1100,1400], gamma=0.1)
+scheduler1 = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=15)
+scheduler2 = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[150,250,350], gamma=0.1)
 scheduler = [scheduler1, scheduler2]
 
 
@@ -94,6 +168,14 @@ def train(epoch, scheduler):
         optimizer.zero_grad()
         outputs = net(inputs)
         loss = criterion(outputs, targets)
+
+        #l1 loss
+        # reg_loss = 0
+        # for param in net.parameters():
+        #     reg_loss += param.norm(p=1)
+        # factor = 0.001
+        # loss += factor * reg_loss
+
         loss.backward()
         optimizer.step()
 
@@ -104,8 +186,8 @@ def train(epoch, scheduler):
 
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %4.3f%% (%d/%d)'
                      % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
-    #scheduler[0].step()
-    scheduler[1].step()
+    scheduler[0].step()
+    # scheduler[1].step()
     return 100.*correct/total
 
 
@@ -132,7 +214,7 @@ def test(epoch):
     # Save checkpoint.
     acc = 100.*correct/total
     if acc > best_acc:
-        print(colored('Saving..','red'))
+        print(colored('Saving..','red'), end='')
         state = {
             'net': net.state_dict(),
             'acc': acc,
@@ -140,7 +222,8 @@ def test(epoch):
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
-        torch.save(state, './checkpoint/ckpt.pth')
+
+        torch.save(state, './checkpoint/tDN40.pth')
         best_acc = acc
         
     return best_acc
@@ -153,7 +236,7 @@ def kd_criterion(o_student, o_teacher, labels, T=3, w=0.8):
 
     return KD_loss
 
-end_epoch = 3000
+end_epoch = 1500
 epoch_tmp = 0
 acc_tmp = 0
 train_accs = []

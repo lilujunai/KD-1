@@ -4,6 +4,7 @@ import random
 import shutil
 from torch.autograd import Variable
 from torchvision.datasets.folder import DatasetFolder, IMG_EXTENSIONS, default_loader
+from termcolor import colored
 
 def gaussian_noise(input, mean, stddev, alpha=0.8):
     for idx, batch in enumerate(input):
@@ -13,10 +14,16 @@ def gaussian_noise(input, mean, stddev, alpha=0.8):
             input[idx] += noise
     return input
 
-def save_checkpoint(state, is_best, save_path=''):
+def save_checkpoint(state, is_best, save_path='', model_name='', student_name='', w=''):
+    if not os.path.isdir('weights'):
+        os.mkdir('weights')
+    if not os.path.isdir('weights/{}_{}_{}'.format(student_name.lower(),model_name.lower(),w)):
+        os.mkdir('weights/{}_{}_{}'.format(student_name.lower(),model_name.lower(),w))
     torch.save(state, os.path.join(save_path, 'checkpoint.pth.tar'))
     if is_best:
-        filename = os.path.join(save_path, 'checkpoint.pth.tar')
+        pid = os.getpid()
+        print(colored('saving...','red'))
+        filename = os.path.join(save_path, 'checkpoint{}.pth.tar'.format(pid))
         shutil.copyfile(filename, os.path.join(save_path, 'model_best.pth.tar'))
 
 def accuracy(output, target, topk=(1,)):
