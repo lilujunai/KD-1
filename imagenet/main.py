@@ -353,7 +353,6 @@ def main_worker(gpu, ngpus_per_node, args):
             if args.overhaul:
                 train_with_overhaul(train_loader, d_net, optimizer, criterion, epoch, args)
                 acc1 = validate_overhaul(val_loader, model, criterion, epoch, args)
-                pass
             else:
                 train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args)
                 acc1 = validate_kd(val_loader, teacher, model, criterion, args)
@@ -375,7 +374,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc1,
                 'optimizer' : optimizer.state_dict(),
-            }, is_best, args.save_path, args.arch, args.teacher_arch, args.w)
+            }, is_best, args.save_path, student_name=args.arch, teacher_name=args.teacher_arch, w=args.w, acc=acc1)
 
         scheduler.step()
 #####################################################################################

@@ -1,10 +1,10 @@
 MODEL='efficientnet-b0'
 TEACHER='resnet152'
-BATCH_SIZE=150
+BATCH_SIZE=10
 w=0.8
-GPUS=10,11,12,13,17
+GPUS=0,1
 echo "start: $(date)"
-CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /home/vision/keti/data/Imagenet      \
+CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /home/taeil/research/data/Imagenet      \
         --arch $MODEL                                           \
         --workers 16						\
         --T 3                                                   \

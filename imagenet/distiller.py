@@ -9,7 +9,7 @@ import time
 
 def train_with_overhaul(train_loader, d_net, optimizer, criterion_CE, epoch, args):
     d_net.train()
-    d_net.module.net.train()
+    d_net.module.s_net.train()
     d_net.module.t_net.train()
 
     train_loss = AverageMeter('Loss',':.4e')

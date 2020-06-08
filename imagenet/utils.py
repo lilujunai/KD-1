@@ -14,17 +14,17 @@ def gaussian_noise(input, mean, stddev, alpha=0.8):
             input[idx] += noise
     return input
 
-def save_checkpoint(state, is_best, save_path='', model_name='', student_name='', w=''):
+def save_checkpoint(state, is_best, save_path='', teacher_name='', student_name='', w='', acc=0):
+    pid = os.getpid()
     if not os.path.isdir('weights'):
         os.mkdir('weights')
-    if not os.path.isdir('weights/{}_{}_{}'.format(student_name.lower(),model_name.lower(),w)):
-        os.mkdir('weights/{}_{}_{}'.format(student_name.lower(),model_name.lower(),w))
-    torch.save(state, os.path.join(save_path, 'checkpoint.pth.tar'))
+    if not os.path.isdir('{}'.format(save_path)):
+        os.mkdir('{}'.format(save_path))
+    torch.save(state, os.path.join(save_path, 'checkpoint_{}_{}.pth.tar'.format(w,pid)))
     if is_best:
-        pid = os.getpid()
-        print(colored('saving...','red'))
-        filename = os.path.join(save_path, 'checkpoint{}.pth.tar'.format(pid))
-        shutil.copyfile(filename, os.path.join(save_path, 'model_best.pth.tar'))
+        print(colored('saving best...','red'))
+        filename = os.path.join(save_path, 'checkpoint_{}_{}.pth.tar'.format(w,pid))
+        shutil.copyfile(filename, os.path.join(save_path, 'model_best:{}_{}.pth.tar'.format(acc,pid)))
 
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
