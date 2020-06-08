@@ -7,7 +7,7 @@ import torch.backends.cudnn as cudnn
 import PIL
 import torchvision
 import torchvision.transforms as transforms
-
+torch.nn.functional.cross_entropy()
 import os
 import argparse
 
@@ -24,7 +24,7 @@ args = parser.parse_args()
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
-batch_size = 2000
+batch_size = 1000
 # Data
 print('==> Preparing data..')
 transform_train = transforms.Compose([
@@ -58,8 +58,10 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer',
 
 # Model
 print('==> Building model..')
-net = EfficientNetB0()
+# net = EfficientNetB0()
+net = ResNet152()
 net = net.to(device)
+
 if device == 'cuda':
     net = torch.nn.DataParallel(net)
     cudnn.benchmark = True
@@ -78,7 +80,7 @@ optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5
 #optimizer = optim.Adam(net.parameters(), lr=args.lr)
 scheduler1 = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10)
 milestone = np.arange(250,350,1)
-scheduler2 = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[700,1100,1400], gamma=0.1)
+scheduler2 = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[150,190,250,300], gamma=0.1)
 scheduler = [scheduler1, scheduler2]
 
 
@@ -140,20 +142,12 @@ def test(epoch):
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
-        torch.save(state, './checkpoint/ckpt.pth')
+        torch.save(state, './checkpoint/t152.pth')
         best_acc = acc
         
     return best_acc
 
-def kd_criterion(o_student, o_teacher, labels, T=3, w=0.8):
-
-    KD_loss = nn.KLDivLoss()(F.log_softmax(o_student / T, dim=1),
-                             F.softmax(o_teacher / T, dim=1)) * (w * T * T) + \
-              F.cross_entropy(o_student, labels) * (1. - w)
-
-    return KD_loss
-
-end_epoch = 3000
+end_epoch = 400
 epoch_tmp = 0
 acc_tmp = 0
 train_accs = []
