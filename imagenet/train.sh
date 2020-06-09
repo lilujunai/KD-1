@@ -1,6 +1,6 @@
 MODEL='efficientnet-b0'
 TEACHER='resnet152'
-BATCH_SIZE=236
+BATCH_SIZE=256
 
 w=0.8
 GPUS=5,6,7,8,9
@@ -20,7 +20,7 @@ CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /data/Imagenet      \
 echo "first test done: $(date)"
 
 w=0.6
-CUDA_VISIBLE_DEVICES=$GPUS python3 main.py > kd_${TEACHER}_${w}.txt /data/Imagenet      \
+CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /data/Imagenet      \
         --arch $MODEL                                           \
         --workers 16						\
         --T 3                                                   \
@@ -35,7 +35,7 @@ CUDA_VISIBLE_DEVICES=$GPUS python3 main.py > kd_${TEACHER}_${w}.txt /data/Imagen
 echo "second test done: $(date)"
 
 w=0.4
-CUDA_VISIBLE_DEVICES=$GPUS python3 main.py > kd_${TEACHER}_${w}.txt /data/Imagenet      \
+CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /data/Imagenet      \
         --arch $MODEL                                           \
         --workers 16						\
         --T 3                                                   \
