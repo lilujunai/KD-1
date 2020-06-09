@@ -2,6 +2,7 @@ import argparse
 import os
 import random
 import warnings
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -182,7 +183,7 @@ def main_worker(gpu, ngpus_per_node, args):
         else:
             print("=> creating model '{}'".format(args.arch))
             model = models.__dict__[args.arch]()
-    # model.apply(bn_momentum)
+    model.apply(bn_momentum)
     student_name = model.__class__.__name__
     # create teacher model
     if args.kd:
@@ -267,13 +268,15 @@ def main_worker(gpu, ngpus_per_node, args):
         optimizer = torch.optim.SGD(list(model.parameters()) + list(d_net.module.Connectors.parameters()), args.lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)  # nesterov
-
+        optimizer = torch.optim.RMSprop(list(model.parameters()) + list(d_net.module.Connectors.parameters()), lr=0.256, alpha=0.99, eps=1e-08, weight_decay=0.9, momentum=0.9, centered=False)
     else:
         optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)
 
     scheduler = MultiStepLR(optimizer, milestones=args.schedule, gamma=args.gamma)
+    milestone = np.ceil(np.arange(0,300,2.4))
+    scheduler = MultiStepLR(optimizer, milestones=milestone, gamma=0.97)
     #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
     # optionally resume from a checkpoint
     if args.resume:
@@ -325,7 +328,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-        num_workers=args.workers, pin_memory=True, sampler=train_sampler)
+        num_workers=args.workers, sampler=train_sampler)
 
     val_loader = torch.utils.data.DataLoader(
         ImageFolder_iid(valdir, transforms.Compose([
@@ -335,7 +338,7 @@ def main_worker(gpu, ngpus_per_node, args):
             normalize,
         ])),
         batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
+        num_workers=args.workers)
 #####################################################################################
 
     if args.evaluate:

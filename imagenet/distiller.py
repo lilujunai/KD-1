@@ -32,7 +32,6 @@ def train_with_overhaul(train_loader, d_net, optimizer, criterion_CE, epoch, arg
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
         if i % args.print_freq == 0:
             print('Train with distillation: [Epoch %d/%d][Batch %d/%d]\t Loss %.3f, Top 1 %.3f, Top 5 %.3f' %
                   (epoch, args.epochs, i, len(train_loader), train_loss.avg, top1.avg, top5.avg))

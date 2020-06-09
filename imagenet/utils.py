@@ -1,6 +1,7 @@
 import torch
 import os
 import random
+import torch.nn as nn
 import shutil
 from torch.autograd import Variable
 from torchvision.datasets.folder import DatasetFolder, IMG_EXTENSIONS, default_loader
