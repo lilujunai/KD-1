@@ -184,7 +184,7 @@ def main_worker(gpu, ngpus_per_node, args):
             print("=> creating model '{}'".format(args.arch))
             model = models.__dict__[args.arch]()
     # model.apply(bn_momentum)
-    student_name = model.__class__.__name__
+
     # create teacher model
     if args.kd:
         print('=> loading teacher model')
@@ -203,8 +203,6 @@ def main_worker(gpu, ngpus_per_node, args):
             teacher = models.__dict__[args.teacher_arch](pretrained=True)
             teacher.eval()
             print('=> {} loaded'.format(args.teacher_arch))
-
-        teacher_name = teacher.__class__.__name__
 
         if args.overhaul:
             print('=> using overhaul distillation')
@@ -376,7 +374,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc1,
                 'optimizer' : optimizer.state_dict(),
-            }, is_best, args.save_path, student_name=args.arch, teacher_name=args.teacher_arch, w=args.w, acc=acc1)
+            }, is_best, args.save_path, teacher=teacher, student=model, w=args.w, acc=acc1)
 
         scheduler.step()
 #####################################################################################
