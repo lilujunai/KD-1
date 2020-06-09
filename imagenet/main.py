@@ -351,7 +351,7 @@ def main_worker(gpu, ngpus_per_node, args):
         # train for one epoch
         if args.kd:
             if args.overhaul:
-                train_with_overhaul(train_loader, d_net, optimizer, criterion, epoch, args)
+                #train_with_overhaul(train_loader, d_net, optimizer, criterion, epoch, args)
                 acc1 = validate_overhaul(val_loader, model, criterion, epoch, args)
             else:
                 train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args)
@@ -366,6 +366,8 @@ def main_worker(gpu, ngpus_per_node, args):
         is_best = acc1 > best_acc1
         best_acc1 = max(acc1, best_acc1)
 
+        student_name = model.__class__.__name__
+        teacher_name = teacher.__class__.__name__
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
             save_checkpoint({
@@ -374,7 +376,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc1,
                 'optimizer' : optimizer.state_dict(),
-            }, is_best, args.save_path, teacher=teacher, student=model, w=args.w, acc=acc1)
+            }, is_best, teacher_name=teacher_name, student_name=student_name, save_path=args.save_path, w=args.w, acc=acc1)
 
         scheduler.step()
 #####################################################################################

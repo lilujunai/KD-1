@@ -17,10 +17,9 @@ def gaussian_noise(input, mean, stddev, alpha=0.8):
             input[idx] += noise
     return input
 
-def save_checkpoint(state, is_best, teacher, student, save_path='', w='', acc=0):
+def save_checkpoint(state, is_best, teacher_name, student_name, save_path='', w='', acc=0):
     pid = os.getpid()
-    student_name = student.__class__.__name__
-    teacher_name = teacher.__class__.__name__
+
     if not os.path.isdir('weights'):
         os.mkdir('weights')
     if not os.path.isdir('{}'.format(save_path)):
