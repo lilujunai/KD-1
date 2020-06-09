@@ -49,11 +49,11 @@ def validate_overhaul(val_loader, model, criterion_CE, epoch, args):
     for i, (input, target, idx) in enumerate(val_loader):
         target = target.cuda()
 
-        # for PyTorch 0.4.x, volatile=True is replaced by with torch.no.grad(), so uncomment the followings:
-        input_var = torch.autograd.Variable(input)
-        target_var = torch.autograd.Variable(target)
-        output = model(input_var)
-        loss = criterion_CE(output, target_var)
+        with torch.no_grad():
+            input_var = torch.autograd.Variable(input)
+            target_var = torch.autograd.Variable(target)
+            output = model(input_var)
+            loss = criterion_CE(output, target_var)
 
         # measure accuracy and record loss
         err1, err5 = accuracy(output.data, target, topk=(1, 5))

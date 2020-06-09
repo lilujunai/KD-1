@@ -183,7 +183,7 @@ def main_worker(gpu, ngpus_per_node, args):
         else:
             print("=> creating model '{}'".format(args.arch))
             model = models.__dict__[args.arch]()
-    model.apply(bn_momentum)
+    # model.apply(bn_momentum)
     student_name = model.__class__.__name__
     # create teacher model
     if args.kd:
@@ -268,16 +268,15 @@ def main_worker(gpu, ngpus_per_node, args):
         optimizer = torch.optim.SGD(list(model.parameters()) + list(d_net.module.Connectors.parameters()), args.lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)  # nesterov
-        optimizer = torch.optim.RMSprop(list(model.parameters()) + list(d_net.module.Connectors.parameters()), lr=0.256, alpha=0.99, eps=1e-08, weight_decay=0.9, momentum=0.9, centered=False)
     else:
         optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)
 
-    scheduler = MultiStepLR(optimizer, milestones=args.schedule, gamma=args.gamma)
-    milestone = np.ceil(np.arange(0,300,2.4))
-    scheduler = MultiStepLR(optimizer, milestones=milestone, gamma=0.97)
-    #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
+    # scheduler = MultiStepLR(optimizer, milestones=args.schedule, gamma=args.gamma)
+    # milestone = np.ceil(np.arange(0,300,2.4))
+    # scheduler = MultiStepLR(optimizer, milestones=milestone, gamma=0.97)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
@@ -294,7 +293,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 # best_acc1 may be from a checkpoint from a different GPU
                 best_acc1 = best_acc1.to(args.gpu)
             model.load_state_dict(checkpoint['state_dict'])
-            otimizer.load_state_dict(checkpoint['optimizer'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
