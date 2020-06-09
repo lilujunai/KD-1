@@ -351,7 +351,7 @@ def main_worker(gpu, ngpus_per_node, args):
         # train for one epoch
         if args.kd:
             if args.overhaul:
-                #train_with_overhaul(train_loader, d_net, optimizer, criterion, epoch, args)
+                train_with_overhaul(train_loader, d_net, optimizer, criterion, epoch, args)
                 acc1 = validate_overhaul(val_loader, model, criterion, epoch, args)
             else:
                 train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args)
