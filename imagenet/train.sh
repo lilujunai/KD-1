@@ -12,7 +12,7 @@ CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /data/Imagenet      \
         --w $w                                                  \
         --teacher_arch $TEACHER                                 \
         --batch-size $BATCH_SIZE                                \
-        --lr 0.1                                               \
+        --lr 0.2                                               \
         --kd                                                    \
         --overhaul                                              \
         --save_path "weights/${TEACHER}_${MODEL}_${w}" --epochs 300
@@ -27,7 +27,7 @@ CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /data/Imagenet      \
         --w $w                                                  \
         --teacher_arch $TEACHER                                 \
         --batch-size $BATCH_SIZE                                \
-        --lr 0.1                                               \
+        --lr 0.2                                               \
         --kd                                                    \
         --overhaul                                              \
         --save_path "weights/${TEACHER}_${MODEL}_${w}" --epochs 300
@@ -42,7 +42,7 @@ CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /data/Imagenet      \
         --w $w                                                  \
         --teacher_arch $TEACHER                                 \
         --batch-size $BATCH_SIZE                                \
-        --lr 0.1                                               \
+        --lr 0.2                                               \
         --kd                                                    \
         --overhaul                                              \
         --save_path "weights/${TEACHER}_${MODEL}_${w}" --epochs 300
