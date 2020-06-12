@@ -3,7 +3,7 @@ TEACHER='resnet152'
 BATCH_SIZE=256
 
 w=0.8
-GPUS=5,6,7,8,9
+GPUS=0,1,2,3,4
 echo "start: $(date)"
 CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /data/Imagenet      \
         --arch $MODEL                                           \

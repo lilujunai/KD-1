@@ -70,6 +70,7 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', action='store_true',
                     help='use pre-trained model')
+parser.add_argument('--advprop', default=False, action='store_true', help='use advprop')
 parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training')
 parser.add_argument('--rank', default=-1, type=int,
@@ -169,7 +170,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.pretrained:
         if args.arch.startswith('efficientnet-b'):
             print('=> using pre-trained {}'.format(args.arch))
-            model = EfficientNet.from_pretrained(args.arch)
+            model = EfficientNet.from_pretrained(args.arch, advprop=args.advprop)
         else:
             print("=> using pre-trained model '{}'".format(args.arch))
             model = models.__dict__[args.arch](pretrained=True)
@@ -274,7 +275,7 @@ def main_worker(gpu, ngpus_per_node, args):
     # scheduler = MultiStepLR(optimizer, milestones=args.schedule, gamma=args.gamma)
     # milestone = np.ceil(np.arange(0,300,2.4))
     # scheduler = MultiStepLR(optimizer, milestones=milestone, gamma=0.97)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
