@@ -62,7 +62,7 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--wd', '--weight-decay', default=1e-5, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=500, type=int,
+parser.add_argument('-p', '--print-freq', default=100, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -326,7 +326,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-        num_workers=args.workers, sampler=train_sampler)
+        num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
     val_loader = torch.utils.data.DataLoader(
         ImageFolder_iid(valdir, transforms.Compose([
@@ -336,7 +336,7 @@ def main_worker(gpu, ngpus_per_node, args):
             normalize,
         ])),
         batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers)
+        num_workers=args.workers, pin_memory=True)
 #####################################################################################
 
     if args.evaluate:
