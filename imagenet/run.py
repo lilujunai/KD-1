@@ -1,9 +1,12 @@
-import torch
 import time
-import torch.nn as nn
+from utils import bn_momentum, imshow
 from torch.autograd import Variable
-import torch.nn.functional as F
+
 from utils import AverageMeter, ProgressMeter, gaussian_noise, accuracy
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torchvision
 
 def kd_criterion(o_student, o_teacher, labels, T=3, w=0.8):
 
@@ -29,6 +32,9 @@ def train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args):
 
     end = time.time()
     for i, (images, target, idx) in enumerate(train_loader):
+        # grid_img = torchvision.utils.make_grid(images)
+        # imshow(grid_img)
+        # time.sleep(100)
 
         # measure data loading time
         data_time.update(time.time() - end)
