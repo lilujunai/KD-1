@@ -2,7 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from scipy.stats import norm
+from utils import imshow
 import scipy
+import torchvision
 from utils import AverageMeter, accuracy
 import math
 import time
@@ -17,6 +19,9 @@ def train_with_overhaul(train_loader, d_net, optimizer, criterion_CE, epoch, arg
     top5 = AverageMeter('Acc@5', ':6.2f')
 
     for i, (inputs, targets, idx) in enumerate(train_loader):
+        # grid_img = torchvision.utils.make_grid(inputs)
+        # imshow(grid_img)
+        # time.sleep(100)
         targets = targets.cuda()
         batch_size = inputs.shape[0]
         outputs, loss_distill = d_net(inputs)

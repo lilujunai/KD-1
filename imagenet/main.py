@@ -21,7 +21,7 @@ from run import train_kd, validate_kd, train, validate, kd_criterion
 from torch.optim.lr_scheduler import MultiStepLR
 import resnet
 from distiller import train_with_overhaul, validate_overhaul, Distiller
-
+from autoaugment import ImageNetPolicy
 from torch.utils.tensorboard import SummaryWriter
 #writer = SummaryWriter()
 
@@ -70,6 +70,8 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', action='store_true',
                     help='use pre-trained model')
+parser.add_argument('--bn_momentum', dest='bn_momentum', action='store_true',
+                    help='batchnorm changing for finetuning')
 parser.add_argument('--advprop', default=False, action='store_true', help='use advprop')
 parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training')
@@ -314,7 +316,8 @@ def main_worker(gpu, ngpus_per_node, args):
         traindir,
         transforms.Compose([
             transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
+            transforms.RandomHorizontalFlip(p=0.5),
+            ImageNetPolicy(),
             transforms.ToTensor(),
             normalize,
         ]))

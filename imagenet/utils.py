@@ -1,11 +1,21 @@
 import torch
 import os
 import random
-import torch.nn as nn
 import shutil
-from torch.autograd import Variable
-from torchvision.datasets.folder import DatasetFolder, IMG_EXTENSIONS, default_loader
 from termcolor import colored
+import matplotlib.pyplot as plt
+from torch.autograd import Variable
+import torch.nn as nn
+import numpy as np
+from torchvision.datasets.folder import DatasetFolder, IMG_EXTENSIONS, default_loader
+
+
+def imshow(img):
+    img = img / 2 + 0.5     # unnormalize
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1, 2, 0)))
+    plt.show()
+
 def bn_momentum(m):
     if isinstance(m, nn.BatchNorm2d):
         m.momentum = 0.9
