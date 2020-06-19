@@ -15,7 +15,7 @@ import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.models as models
 from cifar10_models import *
-from utils import ImageFolder_iid, save_checkpoint, bn_momentum
+from utils import ImageFolder_iid, save_checkpoint
 from efficientnet.model import EfficientNet
 from run import train_kd, validate_kd, train, validate, kd_criterion
 from torch.optim.lr_scheduler import MultiStepLR
@@ -70,8 +70,6 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', action='store_true',
                     help='use pre-trained model')
-parser.add_argument('--bn_momentum', dest='bn_momentum', action='store_true',
-                    help='batchnorm changing for finetuning')
 parser.add_argument('--advprop', default=False, action='store_true', help='use advprop')
 parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training')
