@@ -6,5 +6,6 @@ from .utils import (
     BlockDecoder,
     efficientnet,
     get_model_params,
+    bn_finetune,
 )
 
