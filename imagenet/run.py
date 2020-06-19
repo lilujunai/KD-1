@@ -1,13 +1,13 @@
 import time
 from torch.autograd import Variable
-import __builtin__
+
 from utils import AverageMeter, ProgressMeter, gaussian_noise, accuracy, bn_finetune, imshow
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 
-__builtin__.idx_for_bn # for finetuning technique for batchnorm
+global idx_for_bn # for finetuning technique for batchnorm
 
 def kd_criterion(o_student, o_teacher, labels, T=3, w=0.8):
 
@@ -18,6 +18,7 @@ def kd_criterion(o_student, o_teacher, labels, T=3, w=0.8):
     return KD_loss
 
 def train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args):
+    global idx_for_bn
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -33,7 +34,7 @@ def train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args):
 
     end = time.time()
     for i, (images, target, idx) in enumerate(train_loader):
-        __builtin__.idx_for_bn = i
+        idx_for_bn = i
         # grid_img = torchvision.utils.make_grid(images)
         # imshow(grid_img)
         # time.sleep(100)
