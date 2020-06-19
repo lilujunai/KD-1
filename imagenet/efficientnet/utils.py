@@ -32,11 +32,7 @@ BlockArgs = collections.namedtuple('BlockArgs', [
 GlobalParams.__new__.__defaults__ = (None,) * len(GlobalParams._fields)
 BlockArgs.__new__.__defaults__ = (None,) * len(BlockArgs._fields)
 
-def bn_finetune(m):
-    global idx_for_bn # for finetuning technique for batchnorm
-    if isinstance(m, nn.BatchNorm2d):
-        m.momentum = max(1-10/(idx+1),0.9)
-        print(m.momentum)
+
 
 class SwishImplementation(torch.autograd.Function):
     @staticmethod

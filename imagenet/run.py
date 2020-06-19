@@ -19,7 +19,7 @@ def kd_criterion(o_student, o_teacher, labels, T=3, w=0.8):
     return KD_loss
 
 def train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args):
-
+    global idx_for_bn
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')

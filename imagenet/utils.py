@@ -12,12 +12,14 @@ from torchvision.datasets.folder import DatasetFolder, IMG_EXTENSIONS, default_l
 def imshow(img):
     img = img / 2 + 0.5     # unnormalize
     npimg = img.numpy()
-    plt.imshow(np.transpose(npimg, (1, 2, 0)))
-    plt.show()
+    # plt.imshow(np.transpose(npimg, (1, 2, 0)))
+    # plt.show()
 
-def bn_momentum(m):
+def bn_finetune(m):
+    global idx_for_bn # for finetuning technique for batchnorm
     if isinstance(m, nn.BatchNorm2d):
-        m.momentum = 0.9
+        m.momentum = max(1-10/(idx_for_bn+1),0.9)
+        print(m.momentum)
 def gaussian_noise(input, mean, stddev, alpha=0.8):
     for idx, batch in enumerate(input):
         p = random.random()
