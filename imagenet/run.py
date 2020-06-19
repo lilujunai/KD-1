@@ -34,7 +34,7 @@ def train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args):
     end = time.time()
     for i, (images, target, idx) in enumerate(train_loader):
         globals.idx = i
-        print(globals.i)
+        print(globals.idx)
         # grid_img = torchvision.utils.make_grid(images)
         # imshow(grid_img)
         # time.sleep(100)
