@@ -372,8 +372,8 @@ def main_worker(gpu, ngpus_per_node, args):
         is_best = acc1 > best_acc1
         best_acc1 = max(acc1, best_acc1)
 
-        student_name = model.__class__.module.__name__
-        teacher_name = teacher.__class__.module.__name__
+        student_name = model.module.__class__.__name__
+        teacher_name = teacher.module.__class__.__name__
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
             save_checkpoint({
