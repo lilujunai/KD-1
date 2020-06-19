@@ -44,7 +44,7 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
 parser.add_argument('--T', type=float, help='temperature value for distillation')
 parser.add_argument('--w', type=float, help='ratio for cross entropy loss and distillation loss')
 
-parser.add_argument('-j', '--workers', default=50, type=int, metavar='N',
+parser.add_argument('-j', '--workers', default=16, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=10, type=int, metavar='N',
                     help='number of total epochs to run')
@@ -276,8 +276,10 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # scheduler = MultiStepLR(optimizer, milestones=args.schedule, gamma=args.gamma)
     # milestone = np.ceil(np.arange(0,300,2.4))
-    scheduler = MultiStepLR(optimizer, milestones=[30,60,90,120,150,180,210,240,270], gamma=0.1)
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+    if args.pretrained:
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+    else:
+        scheduler = MultiStepLR(optimizer, milestones=[30,60,90,120,150,180,210,240,270], gamma=0.1)
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
@@ -370,8 +372,8 @@ def main_worker(gpu, ngpus_per_node, args):
         is_best = acc1 > best_acc1
         best_acc1 = max(acc1, best_acc1)
 
-        student_name = model.__class__.__name__
-        teacher_name = teacher.__class__.__name__
+        student_name = model.__class__.module.__name__
+        teacher_name = teacher.__class__.module.__name__
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
             save_checkpoint({

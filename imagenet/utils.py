@@ -3,7 +3,6 @@ import os
 import random
 import shutil
 from termcolor import colored
-import matplotlib.pyplot as plt
 from torch.autograd import Variable
 import torch.nn as nn
 import numpy as np
