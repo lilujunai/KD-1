@@ -18,7 +18,6 @@ def imshow(img):
 def bn_finetune(m):
     if isinstance(m, nn.BatchNorm2d):
         m.momentum = max(1-10/(globals.idx+1),0.9)
-        print(m.momentum)
 def gaussian_noise(input, mean, stddev, alpha=0.8):
     for idx, batch in enumerate(input):
         p = random.random()
