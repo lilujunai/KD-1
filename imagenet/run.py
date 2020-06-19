@@ -34,13 +34,11 @@ def train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args):
     end = time.time()
     for i, (images, target, idx) in enumerate(train_loader):
         globals.idx = i
-        print(globals.idx)
         # grid_img = torchvision.utils.make_grid(images)
         # imshow(grid_img)
         # time.sleep(100)
         if args.pretrained:
             model.apply(bn_finetune)
-        print(model)
         # measure data loading time
         data_time.update(time.time() - end)
 
