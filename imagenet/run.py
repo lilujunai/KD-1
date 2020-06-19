@@ -1,8 +1,7 @@
 import time
-from utils import bn_momentum, imshow
 from torch.autograd import Variable
 
-from utils import AverageMeter, ProgressMeter, gaussian_noise, accuracy, bn_finetune
+from utils import AverageMeter, ProgressMeter, gaussian_noise, accuracy, bn_finetune, imshow
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
