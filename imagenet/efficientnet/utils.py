@@ -33,7 +33,6 @@ GlobalParams.__new__.__defaults__ = (None,) * len(GlobalParams._fields)
 BlockArgs.__new__.__defaults__ = (None,) * len(BlockArgs._fields)
 
 
-
 class SwishImplementation(torch.autograd.Function):
     @staticmethod
     def forward(ctx, i):
