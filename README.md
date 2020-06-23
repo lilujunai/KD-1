@@ -51,12 +51,12 @@ All students' accuracies finetuned with teacher networks were increased and fell
 Since ResNet152 showed promising accuracy and Size Ratio with EfficientNet-B0, it was chosen as the student and teacher pair for ImageNet
 
 ## Size ratio for ResNet152 and EfficientNet B0 on cifar10
-    *Teacher*      |   *Student*           | *Teacher Size* |*Student Size*|*compression ratio*|
+|    *Teacher*      |   *Student*           | *Teacher Size* |*Student Size*|*compression ratio*|
 |:----------------:|:---------------------:|:-------------:|:-------------:|:-----------------:|
 |     ResNet152    |   EfficientNet B0     |      72M      |     6.6M      |       9.16%       |
 
 ## Size ratio for ResNet152 and EfficientNet B0 on ImageNet
-    *Teacher*      |   *Student*           | *Teacher Size* |*Student Size*|*compression ratio*|
+|    *Teacher*      |   *Student*           | *Teacher Size* |*Student Size*|*compression ratio*|
 |:----------------:|:---------------------:|:-------------:|:-------------:|:-----------------:|
 |     ResNet152    |   EfficientNet B0     |     104.4M    |     20.7M     |       19.83%      |
 
