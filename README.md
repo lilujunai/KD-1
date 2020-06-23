@@ -81,5 +81,5 @@ other trivial options are not stated here. Please refer to code
 # Results on ImageNet
 
 |    *Teacher*      |   *Student*           | *Teacher acc* | *Student acc* |*Student accuracy achieved with KD*|
-|:-----------------:|:---------------------:|:-------------:|:---------------------------------:|
+|:-----------------:|:---------------------:|:-------------:|:-------------:|:-------------:|
 |     ResNet152     |   EfficientNet B0   |   [78.31%](https://pytorch.org/docs/stable/torchvision/models.html)  | [76.3%](https://github.com/lukemelas/EfficientNet-PyTorch/) | 77.07% |
