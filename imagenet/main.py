@@ -278,10 +278,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # scheduler = MultiStepLR(optimizer, milestones=args.schedule, gamma=args.gamma)
     # milestone = np.ceil(np.arange(0,300,2.4))
-    if args.pretrained:
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-    else:
-        scheduler = MultiStepLR(optimizer, milestones=[30,60,90,120,150,180,210,240,270], gamma=0.1)
+    
+    scheduler = MultiStepLR(optimizer, milestones=[30,60,90,120,150,180,210,240,270], gamma=0.1)
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
