@@ -35,7 +35,7 @@ note that models should be changed manually by hand
 
 For student network, we used EfficientNet-B0 ([90.67%](https://gisto365-my.sharepoint.com/:u:/g/personal/ooodragon_gm_gist_ac_kr/EfOxqIMI54hJliVkvivB87IB4mRZTF4KoJUw0OtMhn93pQ?e=EE2XkZ)) which is then it was finetuned with KD.
 
-# Results on cifar10
+## Results on cifar10
 
 All students' accuracies finetuned with teacher networks were increased and fell in the bound within 1% accuracy drop from that of teachers'.
 
@@ -45,15 +45,16 @@ All students' accuracies finetuned with teacher networks were increased and fell
 |    Resnet152    |   EfficientNet B0   |   [92.41%](https://gisto365-my.sharepoint.com/:u:/g/personal/ooodragon_gm_gist_ac_kr/EbF-961igiVEmNH8traaEW8B6shscvJ7Sik3L0AxF8YKzA?e=qyrgcN)    |            [92.12%](https://gisto365-my.sharepoint.com/:u:/g/personal/ooodragon_gm_gist_ac_kr/EU9PVa2PyHBBnfj4x8CoroQBRhTE3fcDWeBcQwNAk6N1OA?e=Knca0m)               |
 |   DenseNet40    |   EfficientNet B0   |   [92.26%](https://gisto365-my.sharepoint.com/:u:/g/personal/ooodragon_gm_gist_ac_kr/Eacdmd9AOItNkXWOXPv8HkwBG-8uxrKaoeYJoX7m-8Vn0A?e=G9kQ59)    |            [91.63%](https://gisto365-my.sharepoint.com/:u:/g/personal/ooodragon_gm_gist_ac_kr/EfHrvWKX2KVPrG7WXL9UchEBbJlIfR3SMM7nWhTKdCGZiw?e=MVqkVy)               |
 
+## Size ratio for ResNet152 and EfficientNet B0 on cifar10
+|    *Teacher*      |   *Student*           | *Teacher Size* |*Student Size*|*compression ratio*|
+|:----------------:|:---------------------:|:-------------:|:-------------:|:-----------------:|
+|     ResNet152    |   EfficientNet B0     |      72M      |     6.6M      |       9.16%       |
 
 # For ImageNet
 
 Since ResNet152 showed promising accuracy and Size Ratio with EfficientNet-B0, it was chosen as the student and teacher pair for ImageNet
 
-## Size ratio for ResNet152 and EfficientNet B0 on cifar10
-|    *Teacher*      |   *Student*           | *Teacher Size* |*Student Size*|*compression ratio*|
-|:----------------:|:---------------------:|:-------------:|:-------------:|:-----------------:|
-|     ResNet152    |   EfficientNet B0     |      72M      |     6.6M      |       9.16%       |
+
 
 ## Size ratio for ResNet152 and EfficientNet B0 on ImageNet
 |    *Teacher*      |   *Student*           | *Teacher Size* |*Student Size*|*compression ratio*|
@@ -78,7 +79,7 @@ bash train.sh
 other trivial options are not stated here. Please refer to code
 ```
 
-# Results on ImageNet
+## Results on ImageNet
 
 |    *Teacher*      |   *Student*           | *Teacher acc* | *Student acc* |*Student accuracy achieved with KD*|
 |:-----------------:|:---------------------:|:-------------:|:-------------:|:-------------:|
