@@ -171,6 +171,10 @@ def main_worker(gpu, ngpus_per_node, args):
         if args.arch.startswith('efficientnet-b'):
             print('=> using pre-trained {}'.format(args.arch))
             model = EfficientNet.from_pretrained(args.arch, advprop=args.advprop)
+            for n, v in model.named_children():
+                if isinstance(v, nn.modules.dropout.Dropout):
+                    v.p = 0.1 # lower dropconnect for higher bias lower variance
+
         else:
             print("=> using pre-trained model '{}'".format(args.arch))
             model = models.__dict__[args.arch](pretrained=True)
