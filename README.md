@@ -83,4 +83,4 @@ other trivial options are not stated here. Please refer to code
 
 |    *Teacher*      |   *Student*           | *Teacher acc* | *Student acc* |*Student accuracy achieved with KD*|
 |:-----------------:|:---------------------:|:-------------:|:-------------:|:-------------:|
-|     ResNet152     |   EfficientNet B0   |   [78.31%](https://pytorch.org/docs/stable/torchvision/models.html)  | [76.3%](https://github.com/lukemelas/EfficientNet-PyTorch/) | 77.07% |
+|     ResNet152     |   EfficientNet B0   |   [78.31%](https://pytorch.org/docs/stable/torchvision/models.html)  | [76.3%](https://github.com/lukemelas/EfficientNet-PyTorch/) | [77.07%](https://gisto365-my.sharepoint.com/:u:/g/personal/ooodragon_gm_gist_ac_kr/EfOxqIMI54hJliVkvivB87IB4mRZTF4KoJUw0OtMhn93pQ?e=Dkf1ZO) |
