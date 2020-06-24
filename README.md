@@ -33,7 +33,7 @@ bash trainKD.sh
 
 note that models should be changed manually by hand
 
-For student network, we used EfficientNet-B0 ([90.67%](https://gisto365-my.sharepoint.com/:u:/g/personal/ooodragon_gm_gist_ac_kr/EfOxqIMI54hJliVkvivB87IB4mRZTF4KoJUw0OtMhn93pQ?e=EE2XkZ)) which is then it was finetuned with KD.
+For student network, we used EfficientNet-B0 ([90.67%](https://gisto365-my.sharepoint.com/:u:/g/personal/ooodragon_gm_gist_ac_kr/EfOxqIMI54hJliVkvivB87IB4mRZTF4KoJUw0OtMhn93pQ?e=EE2XkZ)) which is then finetuned with KD.
 
 ## Results on cifar10
 
