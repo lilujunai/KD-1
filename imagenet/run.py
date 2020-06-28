@@ -253,16 +253,3 @@ def train_prune(train_loader, model, criterion, optimizer, epoch, args):
 
         if i % args.print_freq == 0:
             progress.display(i)
-
-def zero_out_grad(m):
-    try:
-        m.weight
-        print(m.weight)
-        for param in m.:
-            # print('param')
-            # print(param)
-            # print('grad')
-            # print(param.grad)
-            break
-    except:
-        pass

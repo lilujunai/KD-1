@@ -65,7 +65,7 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--wd', '--weight-decay', default=1e-5, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=100, type=int,
+parser.add_argument('-p', '--print-freq', default=500, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -447,8 +447,11 @@ def main_worker(gpu, ngpus_per_node, args):
                 acc1 = validate_overhaul(val_loader, model, criterion, epoch, args)
             else:
                 train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args)
+                print('train epoch:', epoch)
+                GPUtil.showUtilization()
                 acc1 = validate_kd(val_loader, teacher, model, criterion, args)
-
+                print('test')
+                GPUtil.showUtilization()
         else:
             train(train_loader, model, criterion, optimizer, epoch, args)
             acc1 = validate(val_loader, model, criterion, args)
