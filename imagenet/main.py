@@ -17,11 +17,14 @@ import torchvision.models as models
 from cifar10_models import *
 from utils import ImageFolder_iid, save_checkpoint
 from efficientnet.model import EfficientNet
-from run import train_kd, validate_kd, train, validate, kd_criterion
+from run import train_kd, validate_kd, train, validate, kd_criterion, train_prune
 from torch.optim.lr_scheduler import MultiStepLR
 import resnet
 from distiller import train_with_overhaul, validate_overhaul, Distiller
 from autoaugment import ImageNetPolicy
+import efficientnet
+import torch.nn.utils.prune as prune
+import GPUtil
 from torch.utils.tensorboard import SummaryWriter
 #writer = SummaryWriter()
 
@@ -90,6 +93,7 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'multi node data parallel training')
 parser.add_argument('--kd', action='store_true')
 parser.add_argument('--overhaul', action='store_true')
+parser.add_argument('--prune', action='store_true')
 parser.add_argument('--teacher_arch', default='resnet152',
                     choices=model_names,
                     help='model architecture: ' +
@@ -167,13 +171,15 @@ def main_worker(gpu, ngpus_per_node, args):
 
 # create model
 #####################################################################################
+
+
     if args.pretrained:
         if args.arch.startswith('efficientnet-b'):
             print('=> using pre-trained {}'.format(args.arch))
             model = EfficientNet.from_pretrained(args.arch, advprop=args.advprop)
-            for n, v in model.named_children():
-                if isinstance(v, nn.modules.dropout.Dropout):
-                    v.p = 0.1 # lower dropconnect for higher bias lower variance
+            # for n, v in model.named_children():
+            #     if isinstance(v, nn.modules.dropout.Dropout):
+            #         v.p = 0.1 # lower dropconnect for higher bias lower variance
 
         else:
             print("=> using pre-trained model '{}'".format(args.arch))
@@ -279,7 +285,7 @@ def main_worker(gpu, ngpus_per_node, args):
     # scheduler = MultiStepLR(optimizer, milestones=args.schedule, gamma=args.gamma)
     # milestone = np.ceil(np.arange(0,300,2.4))
 
-    scheduler = MultiStepLR(optimizer, milestones=[30,60,90,120,150,180,210,240,270], gamma=0.1)
+    # scheduler = MultiStepLR(optimizer, milestones=[30,60,90,120,150,180,210,240,270], gamma=0.1)
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
@@ -347,6 +353,86 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.evaluate:
         validate(val_loader, model, criterion, args)
 
+    if args.prune:
+        print('pruning!')
+        model = EfficientNet.from_name('efficientnet-b0')
+        model = nn.DataParallel(model).cuda()
+        checkpoint = torch.load(
+            '/home/taeil/research/KD/imagenet/weights/resnet152_efficientnet-b0_0.8/model_best:EfficientNet_ResNet_77.00_9435.pth.tar')
+
+        model.load_state_dict(checkpoint['state_dict'])
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(args.resume, checkpoint['epoch']))
+        model = model.module
+        mods = list(model.modules())
+        parameters_to_prune = []
+        for i1 in range(1, len(mods)):
+            mod = mods[i1]
+            if isinstance(mod, torch.nn.modules.container.ModuleList):
+                for j in range(1, len(mod)):
+                    m = mods[j]
+                    if isinstance(m, efficientnet.model.MBConvBlock):
+                        for z in m.children():
+                            if isinstance(z, nn.Sequential):
+                                for f in range(1, len(z)):
+                                    t = z[f]
+                                    print(4)
+                                    print(t)
+                                    try:
+                                        t.weight
+                                        parameters_to_prune.append((t, 'weight'))
+                                    except:
+                                        pass
+                            else:
+                                print(2)
+                                print(z)
+                                try:
+                                    z.weight
+                                    parameters_to_prune.append((z, 'weight'))
+                                except:
+                                    pass
+            elif isinstance(mod, efficientnet.model.MBConvBlock):
+                for mod in m.children():
+                    print(mod)
+                    try:
+                        mod.weight
+                        parameters_to_prune.append((mod, 'weight'))
+                    except:
+                        pass
+            else:
+                print(1)
+                print(mod)
+                try:
+                    mod.weight
+                    parameters_to_prune.append((mod, 'weight'))
+                except:
+                    pass
+        prune.global_unstructured(
+            parameters_to_prune,
+            pruning_method=prune.L1Unstructured,
+            amount=0.5,
+        )
+        # print(model._blocks[0]._depthwise_conv.weight==0))/float(model._blocks[0]._depthwise_conv.weight.nelement()))
+        # validate(val_loader, model, criterion, args)
+        model = nn.DataParallel(model).cuda()
+        for epoch in range(10):
+            train_prune(train_loader, model, criterion, optimizer, epoch, args)
+            acc1 = validate(val_loader, model, criterion, args)
+
+            student_name = model.module.__class__.__name__
+            teacher_name = ''
+
+            is_best = acc1 > best_acc1
+            best_acc1 = max(acc1, best_acc1)
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'arch': args.arch,
+                'state_dict': model.state_dict(),
+                'best_acc1': best_acc1,
+                'optimizer': optimizer.state_dict(),
+            }, is_best, teacher_name=teacher_name, student_name=student_name, save_path=args.save_path, w=args.w, acc=acc1)
+        return
+
 # Start training
 #####################################################################################
     for epoch in range(args.start_epoch, args.epochs):
@@ -384,7 +470,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 'optimizer' : optimizer.state_dict(),
             }, is_best, teacher_name=teacher_name, student_name=student_name, save_path=args.save_path, w=args.w, acc=acc1)
 
-        scheduler.step()
+        # scheduler.step()
 #####################################################################################
 
 if __name__ == '__main__':

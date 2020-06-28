@@ -135,8 +135,7 @@ class Distiller(nn.Module):
         self.s_net = s_net
 
     def forward(self, x):
-        with torch.no_grad():
-            t_feats, t_out = self.t_net.extract_feature(x, preReLU=True)
+        t_feats, t_out = self.t_net.extract_feature(x, preReLU=True)
         s_feats, s_out = self.s_net.extract_feature(x)
         feat_num = len(t_feats)
 
