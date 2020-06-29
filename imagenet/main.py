@@ -24,7 +24,6 @@ from distiller import train_with_overhaul, validate_overhaul, Distiller
 from autoaugment import ImageNetPolicy
 import efficientnet
 import torch.nn.utils.prune as prune
-import GPUtil
 from torch.utils.tensorboard import SummaryWriter
 #writer = SummaryWriter()
 
@@ -448,10 +447,8 @@ def main_worker(gpu, ngpus_per_node, args):
             else:
                 train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args)
                 print('train epoch:', epoch)
-                GPUtil.showUtilization()
                 acc1 = validate_kd(val_loader, teacher, model, criterion, args)
                 print('test')
-                GPUtil.showUtilization()
         else:
             train(train_loader, model, criterion, optimizer, epoch, args)
             acc1 = validate(val_loader, model, criterion, args)
