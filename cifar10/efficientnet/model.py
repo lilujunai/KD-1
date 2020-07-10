@@ -63,6 +63,7 @@ class MBConvBlock(nn.Module):
         final_oup = self._block_args.output_filters
         self._project_conv = Conv2d(in_channels=oup, out_channels=final_oup, kernel_size=1, bias=False)
         self._bn2 = nn.BatchNorm2d(num_features=final_oup, momentum=self._bn_mom, eps=self._bn_eps)
+        self._relu6 = nn.ReLU6()
         self._swish = MemoryEfficientSwish()
 
     def forward(self, inputs, drop_connect_rate=None):
@@ -76,8 +77,8 @@ class MBConvBlock(nn.Module):
         x = inputs
         x_shape = x.shape[3]
         if self._block_args.expand_ratio != 1:
-            x = self._swish(self._bn0(self._expand_conv(inputs)))
-        x = self._swish(self._bn1(self._depthwise_conv(x)))
+            x = self._relu6(self._bn0(self._expand_conv(inputs)))
+        x = self._relu6(self._bn1(self._depthwise_conv(x)))
 
         # see if input and output sizes are different and is the size we are looking for
         check_channel = x_shape != x.shape[3]
@@ -89,7 +90,7 @@ class MBConvBlock(nn.Module):
         # Squeeze and Excitation
         if self.has_se:
             x_squeezed = F.adaptive_avg_pool2d(x, 1)
-            x_squeezed = self._se_expand(self._swish(self._se_reduce(x_squeezed)))
+            x_squeezed = self._se_expand(self._relu6(self._se_reduce(x_squeezed)))
             x = torch.sigmoid(x_squeezed) * x
 
         x = self._bn2(self._project_conv(x))
@@ -168,6 +169,7 @@ class EfficientNet(nn.Module):
         self._avg_pooling = nn.AdaptiveAvgPool2d(1)
         self._dropout = nn.Dropout(self._global_params.dropout_rate)
         self._fc = nn.Linear(out_channels, self._global_params.num_classes)
+        self._relu6 = nn.ReLU6()
         self._swish = MemoryEfficientSwish()
 
     def set_swish(self, memory_efficient=True):
@@ -180,7 +182,7 @@ class EfficientNet(nn.Module):
         """ Returns output of the final convolution layer """
 
         # Stem
-        x = self._swish(self._bn0(self._conv_stem(inputs)))
+        x = self._relu6(self._bn0(self._conv_stem(inputs)))
 
         # Blocks
         for idx, block in enumerate(self._blocks):
@@ -190,7 +192,7 @@ class EfficientNet(nn.Module):
             x, _ = block(x, drop_connect_rate=drop_connect_rate)
 
         # Head
-        x = self._swish(self._bn1(self._conv_head(x)))
+        x = self._relu6(self._bn1(self._conv_head(x)))
 
         return x
 
@@ -198,7 +200,7 @@ class EfficientNet(nn.Module):
     def extract_feature(self, inputs):
         features = []
         bs = inputs.size(0)
-        x = self._swish(self._bn0(self._conv_stem(inputs)))
+        x = self._relu6(self._bn0(self._conv_stem(inputs)))
 
         for idx, block in enumerate(self._blocks):
             drop_connect_rate = self._global_params.drop_connect_rate
@@ -209,7 +211,7 @@ class EfficientNet(nn.Module):
             if feat is not None:
                 features.append(feat)
 
-        x = self._swish(self._bn1(self._conv_head(x)))
+        x = self._relu6(self._bn1(self._conv_head(x)))
         x = self._avg_pooling(x)
         x = x.view(bs, -1)
         x = self._dropout(x)
