@@ -47,12 +47,12 @@ transform_test = transforms.Compose([
 ])
 
 trainset = torchvision.datasets.CIFAR10(
-    root='./data', train=True, download=False, transform=transform_train)
+    root='/data', train=True, download=True, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(
     trainset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=15)
 
 testset = torchvision.datasets.CIFAR10(
-    root='./data', train=False, download=False, transform=transform_test)
+    root='/data', train=False, download=True, transform=transform_test)
 testloader = torch.utils.data.DataLoader(
     testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=15)
 
@@ -73,8 +73,6 @@ if args.kd:
 
     checkpoint = torch.load('./t_ckpt.pth')
     t_net.load_state_dict(checkpoint['net'])
-
-    t_net = t_net.to(device)
 
 else:
     if args.arch == 'resnet152':
