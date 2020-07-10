@@ -444,7 +444,7 @@ if __name__ == '__main__':
     model.load_state_dict(checkpoint['state_dict'])
 
     criterion = nn.CrossEntropyLoss().cuda()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=args.wd,
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=args.weight_decay,
                                   amsgrad=False)
     scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs * int(1281167 / args.batch_size), eta_min=0,
                                   last_epoch=-1)

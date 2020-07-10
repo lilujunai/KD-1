@@ -9,7 +9,6 @@ CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /data/Imagenet      \
         --T 3                                                   \
         --batch-size $BATCH_SIZE                                \
         --lr 6e-4                                               \
-        --kd                                                    \
         --save_path "weights/${TEACHER}_${MODEL}" --epochs 300
 
 echo "test done: $(date)"
