@@ -12,8 +12,8 @@ CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /data/Imagenet      \
         --batch-size $BATCH_SIZE                                \
         --lr 6e-4                                               \
         --kd                                                    \
-#        --pretrained                                            \
-#        --pth_path  "./weights/resnet152_efficientnet-b0/model_best:EfficientNet_ResNet.pth.tar" \
         --save_path "weights/${TEACHER}_${MODEL}" --epochs 300
 
+#        --pretrained                                            \
+#        --pth_path  "./weights/resnet152_efficientnet-b0/model_best:EfficientNet_ResNet.pth.tar" \
 echo "test done: $(date)"
