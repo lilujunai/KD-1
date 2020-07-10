@@ -329,6 +329,8 @@ def main_worker(gpu, ngpus_per_node, args):
 # Start training
 #####################################################################################
     best_acc1 = 0
+    teacher_name = ''
+    student_name = ''
     for epoch in range(args.start_epoch, args.epochs):
 
         if args.distributed:
@@ -343,7 +345,10 @@ def main_worker(gpu, ngpus_per_node, args):
                 train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args)
                 acc1 = validate_kd(val_loader, teacher, model, criterion, args)
 
+                teacher_name = teacher.module.__class__.__name__
+
         else:
+            student_name = model.module.__class__.__name__
             train(train_loader, model, criterion, optimizer, epoch, args)
             acc1 = validate(val_loader, model, criterion, args)
 
@@ -352,8 +357,7 @@ def main_worker(gpu, ngpus_per_node, args):
         is_best = acc1 > best_acc1
         best_acc1 = max(acc1, best_acc1)
 
-        student_name = model.module.__class__.__name__
-        teacher_name = teacher.module.__class__.__name__
+
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
             save_checkpoint({
