@@ -7,7 +7,6 @@ CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /data/Imagenet      \
         --arch $MODEL                                           \
         --workers 8				                                    	\
         --T 3                                                   \
-        --teacher_arch $TEACHER                                 \
         --batch-size $BATCH_SIZE                                \
         --lr 6e-4                                               \
         --kd                                                    \
