@@ -111,6 +111,7 @@ class EfficientNet(nn.Module):
         self.bn1 = nn.BatchNorm2d(32)
         self.layers = self._make_layers(in_channels=32)
         self.linear = nn.Linear(cfg['out_channels'][-1], num_classes)
+        self.relu6 = nn.ReLU6()
 
     def _make_layers(self, in_channels):
         layers = []
