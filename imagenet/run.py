@@ -1,13 +1,10 @@
 import time
-from torch.autograd import Variable
-import globals
-from utils import AverageMeter, ProgressMeter, gaussian_noise, accuracy, bn_finetune, imshow
+
+from torch.optim.lr_scheduler import CosineAnnealingLR
+from utils import AverageMeter, ProgressMeter, accuracy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision
-
-globals.initialize() # for finetuning technique for batchnorm
 
 def kd_criterion(o_student, o_teacher, labels, T=3, w=0.8):
 
@@ -32,14 +29,11 @@ def train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args):
     model.train()
 
     end = time.time()
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, len(train_loader), eta_min=0, last_epoch=-1)
     for i, (images, target, idx) in enumerate(train_loader):
-        globals.idx = i # bn momentum for finetuning
         # grid_img = torchvision.utils.make_grid(images)
         # imshow(grid_img)
         # time.sleep(100)
-        # if args.pretrained:
-        #     model.apply(bn_finetune)
+
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -55,7 +49,7 @@ def train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args):
         # 0.1, 0.4 76.640
         # 0.3, 0.4 76.630
         # 0.5, 0.4 76.632
-        #o_teacher = torch.from_numpy(o_teacher_label_train[idx]).cuda()
+        # o_teacher = torch.from_numpy(o_teacher_label_train[idx]).cuda()
 
         loss = criterion(output, o_teacher, target)
         # measure accuracy and record loss
@@ -68,7 +62,7 @@ def train_kd(train_loader, teacher, model, criterion, optimizer, epoch, args):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        scheduler.step()
+
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
@@ -162,7 +156,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         if i % args.print_freq == 0:
             progress.display(i)
-
 def validate(val_loader, model, criterion, args):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -206,7 +199,8 @@ def validate(val_loader, model, criterion, args):
 
     return top1.avg
 
-def train_prune(train_loader, model, criterion, optimizer, epoch, args):
+def train_prune(train_loader, model, criterion, optimizer, epoch, zero_weight, zero_grad, args):
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0, last_epoch=-1)
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -222,6 +216,7 @@ def train_prune(train_loader, model, criterion, optimizer, epoch, args):
 
     end = time.time()
     for i, (images, target, idx) in enumerate(train_loader):
+        model.apply(zero_weight)
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -243,8 +238,8 @@ def train_prune(train_loader, model, criterion, optimizer, epoch, args):
         optimizer.zero_grad()
         loss.backward()
 
-        model.apply(zero_out_grad)
-        break
+        model.apply(zero_grad)
+
         optimizer.step()
 
         # measure elapsed time

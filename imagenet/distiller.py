@@ -1,10 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from scipy.stats import norm
-from utils import imshow
-import scipy
-import torchvision
 from utils import AverageMeter, accuracy
 import math
 import time

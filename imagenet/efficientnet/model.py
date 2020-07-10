@@ -168,11 +168,11 @@ class EfficientNet(nn.Module):
         self._avg_pooling = nn.AdaptiveAvgPool2d(1)
         self._dropout = nn.Dropout(self._global_params.dropout_rate)
         self._fc = nn.Linear(out_channels, self._global_params.num_classes)
-        self._swish = MemoryEfficientSwish()
+        self._relu6 = nn.ReLU6()
 
     def set_swish(self, memory_efficient=True):
         """Sets swish function as memory efficient (for training) or standard (for export)"""
-        self._swish = MemoryEfficientSwish() if memory_efficient else Swish()
+        self._relu6 = MemoryEfficientSwish() if memory_efficient else Swish()
         for block in self._blocks:
             block.set_swish(memory_efficient)
 
@@ -180,7 +180,7 @@ class EfficientNet(nn.Module):
         """ Returns output of the final convolution layer """
 
         # Stem
-        x = self._swish(self._bn0(self._conv_stem(inputs)))
+        x = self._relu6(self._bn0(self._conv_stem(inputs)))
 
         # Blocks
         for idx, block in enumerate(self._blocks):
@@ -190,7 +190,7 @@ class EfficientNet(nn.Module):
             x, _ = block(x, drop_connect_rate=drop_connect_rate)
 
         # Head
-        x = self._swish(self._bn1(self._conv_head(x)))
+        x = self._relu6(self._bn1(self._conv_head(x)))
 
         return x
 
@@ -198,7 +198,7 @@ class EfficientNet(nn.Module):
     def extract_feature(self, inputs):
         features = []
         bs = inputs.size(0)
-        x = self._swish(self._bn0(self._conv_stem(inputs)))
+        x = self._relu6(self._bn0(self._conv_stem(inputs)))
 
         for idx, block in enumerate(self._blocks):
             drop_connect_rate = self._global_params.drop_connect_rate
@@ -209,7 +209,7 @@ class EfficientNet(nn.Module):
             if feat is not None:
                 features.append(feat)
 
-        x = self._swish(self._bn1(self._conv_head(x)))
+        x = self._relu6(self._bn1(self._conv_head(x)))
         x = self._avg_pooling(x)
         x = x.view(bs, -1)
         x = self._dropout(x)

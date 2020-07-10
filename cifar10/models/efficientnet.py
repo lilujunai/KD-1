@@ -25,10 +25,10 @@ class SE(nn.Module):
                              kernel_size=1, bias=True)
         self.se2 = nn.Conv2d(se_channels, in_channels,
                              kernel_size=1, bias=True)
-
+        self.relu6 = nn.ReLU6
     def forward(self, x):
         out = F.adaptive_avg_pool2d(x, (1, 1))
-        out = swish(self.se1(out))
+        out = self.relu6(self.se1(out))
         out = self.se2(out).sigmoid()
         out = x * out
         return out
@@ -85,10 +85,10 @@ class Block(nn.Module):
 
         # Skip connection if in and out shapes are the same (MV-V2 style)
         self.has_skip = (stride == 1) and (in_channels == out_channels)
-
+        self.relu6 = nn.ReLU6()
     def forward(self, x):
-        out = x if self.expand_ratio == 1 else swish(self.bn1(self.conv1(x)))
-        out = swish(self.bn2(self.conv2(out)))
+        out = x if self.expand_ratio == 1 else self.relu6(self.bn1(self.conv1(x)))
+        out = self.relu6(self.bn2(self.conv2(out)))
         out = self.se(out)
         out = self.bn3(self.conv3(out))
         if self.has_skip:
@@ -134,7 +134,7 @@ class EfficientNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = swish(self.bn1(self.conv1(x)))
+        out = self.relu6(self.bn1(self.conv1(x)))
         out = self.layers(out)
         out = F.adaptive_avg_pool2d(out, 1)
         out = out.view(out.size(0), -1)
