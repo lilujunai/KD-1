@@ -25,7 +25,7 @@ class SE(nn.Module):
                              kernel_size=1, bias=True)
         self.se2 = nn.Conv2d(se_channels, in_channels,
                              kernel_size=1, bias=True)
-        self.relu6 = nn.ReLU6
+        self.relu6 = nn.ReLU6()
     def forward(self, x):
         out = F.adaptive_avg_pool2d(x, (1, 1))
         out = self.relu6(self.se1(out))
