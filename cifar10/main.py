@@ -9,7 +9,7 @@ import os
 import argparse
 from autoaugment import CIFAR10Policy
 from models import *
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 # from efficientnet.model import EfficientNet
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from utils import progress_bar
@@ -22,7 +22,7 @@ parser.add_argument('--resume', '-r', action='store_true',
 parser.add_argument('--kd', action='store_true')
 parser.add_argument('--epochs', default=300, type=int)
 parser.add_argument('-a', '--arch', metavar='ARCH', default='efficientnet-b0')
-parser.add_argument('-b', '--batch_size', default=256, type=int)
+parser.add_argument('-b', '--batch_size', default=64, type=int)
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -228,8 +228,10 @@ if __name__ == '__main__':
                 'epoch': epoch_tmp,
             }
     epochs = list(range(end_epoch))
+    '''
     plt.plot(epochs, train_accs, label='train')
     plt.plot(epochs, test_accs, label='test')
     plt.legend()
     plt.savefig('accs.png')
     torch.save(state, './checkpoint/{}:{:.2f}.pth'.format(net_name,acc_tmp))
+    '''
