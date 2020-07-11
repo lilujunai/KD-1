@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from models import *
 
 class SizeEstimator(object):
 
@@ -58,6 +59,7 @@ class SizeEstimator(object):
             # print(colored(input_.shape, 'green'))
             out = m(input_)
             out_sizes.append(np.array(out.detach().cpu()))
+            print(out.shape)
             input_ = out
 
         total_activation = 0
@@ -72,3 +74,14 @@ class SizeEstimator(object):
         return total_activation
 
 
+if __name__ == '__main__':
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    net = EfficientNetB0()
+    # net = net.to(device)
+    # net = torch.nn.DataParallel(net)
+    # checkpoint = torch.load('ResNet95.57.pth')
+    # net.load_state_dict(checkpoint['net'])
+    se = SizeEstimator(net, input_size=(1,3,32,32))
+    act = se.get_output_sizes()
+    param = se.get_parameter_sizes()
+    print(act+param)

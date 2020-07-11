@@ -14,6 +14,7 @@ import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.models as models
 from cifar10_models import *
+from termcolor import colored
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from utils import ImageFolder_iid, save_checkpoint
 from efficientnet.model import EfficientNet
@@ -355,6 +356,8 @@ def main_worker(gpu, ngpus_per_node, args):
         # remember best acc@1 and save checkpoint
         #writer.add_scalars('acc1', acc1, epoch)
         is_best = acc1 > best_acc1
+        if acc1 < 65:
+            print(colored('not saving... accuracy smaller than 65',' green'))
         best_acc1 = max(acc1, best_acc1)
 
 
