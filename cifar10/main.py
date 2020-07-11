@@ -9,6 +9,7 @@ import os
 import argparse
 from autoaugment import CIFAR10Policy
 from models import *
+import matplotlib.pyplot as plt
 # from efficientnet.model import EfficientNet
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from utils import progress_bar
@@ -207,6 +208,8 @@ if __name__ == '__main__':
     end_epoch = args.epochs
     epoch_tmp = 0
     acc_tmp = 0
+    train_accs = []
+    test_accs = []
     for epoch in range(start_epoch+end_epoch):
         train_acc = train(epoch, scheduler)
         test_acc = test(epoch)
@@ -214,7 +217,8 @@ if __name__ == '__main__':
         if acc_tmp < test_acc:
             acc_tmp = test_acc
             epoch_tmp = epoch
-
+        train_accs.append(train_acc)
+        test_accs.append(test_accs)
     print('=============================')
     print('best accuracy:', test_acc)
     print('best epoch:', epoch_tmp)
@@ -223,4 +227,9 @@ if __name__ == '__main__':
                 'acc': acc_tmp,
                 'epoch': epoch_tmp,
             }
+    epochs = list(range(end_epoch))
+    plt.plot(epochs, train_accs, label='train')
+    plt.plot(epochs, test_accs, label='test')
+    plt.legend()
+    plt.savefig('accs.png')
     torch.save(state, './checkpoint/{}:{:.2f}.pth'.format(net_name,acc_tmp))
