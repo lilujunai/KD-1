@@ -72,7 +72,7 @@ if args.kd:
         t_net = torch.nn.DataParallel(t_net)
         cudnn.benchmark = True
 
-    checkpoint = torch.load('./t_ckpt.pth')
+    checkpoint = torch.load('./ResNet95.57.pth')
     t_net.load_state_dict(checkpoint['net'])
 
 else:
@@ -130,7 +130,7 @@ if args.kd:
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
 
-            progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %4.3f%% (%d/%d)'
+            progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %5.2f%% (%d/%d)'
                          % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
         scheduler.step()
         return 100. * correct / total
@@ -228,10 +228,17 @@ if __name__ == '__main__':
                 'epoch': epoch_tmp,
             }
     epochs = list(range(end_epoch))
+<<<<<<< HEAD
     '''
     plt.plot(epochs, train_accs, label='train')
     plt.plot(epochs, test_accs, label='test')
     plt.legend()
     plt.savefig('accs.png')
+=======
+    # plt.plot(epochs, train_accs, label='train')
+    # plt.plot(epochs, test_accs, label='test')
+    # plt.legend()
+    # plt.savefig('accs.png')
+>>>>>>> 2f26762f0f71b920c9c834d1fcfa64c34fad9523
     torch.save(state, './checkpoint/{}:{:.2f}.pth'.format(net_name,acc_tmp))
     '''
