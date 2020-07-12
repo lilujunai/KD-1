@@ -1,4 +1,5 @@
 import argparse
+import math
 import os
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torchvision.transforms import transforms
@@ -12,12 +13,13 @@ import torch
 import numpy as np
 from size_estimator import SizeEstimator
 from run import train, validate
+from torch.nn import functional as F
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 pruning')
 parser.add_argument('data', metavar='DIR',
                     help='path to dataset')
-parser.add_argument('--l2', default=1., type=float, help='l2 norm pruning (1 = no pruning)')
-parser.add_argument('--dist', default=0.9, type=float, help='median filter pruning (0 = no pruning)')
+parser.add_argument('--l2', default=0.97, type=float, help='l2 norm pruning (1 = no pruning)')
+parser.add_argument('--dist', default=0.09, type=float, help='median filter pruning (0 = no pruning)')
 parser.add_argument('--lr', default=1e-6, type=float, help='learning rate')
 parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('-b', '--batch_size', default=64, type=int)
@@ -28,6 +30,10 @@ parser.add_argument('--wd', '--weight-decay', default=1e-5, type=float,
 parser.add_argument('-p', '--print-freq', default=2000, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--save_path', default='', type=str)
+parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
+                    help='number of data loading workers (default: 4)')
+parser.add_argument('--gpu', default=None, type=int,
+                    help='GPU id to use.')
 args = parser.parse_args()
 
 traindir = os.path.join(args.data, 'train')
@@ -45,10 +51,8 @@ train_dataset = ImageFolder_iid(
         normalize,
     ]))
 
-if args.distributed:
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-else:
-    train_sampler = None
+
+train_sampler = None
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
@@ -64,6 +68,37 @@ val_loader = torch.utils.data.DataLoader(
     batch_size=args.batch_size, shuffle=False,
     num_workers=args.workers, pin_memory=True)
 
+class Identity(nn.Module):
+    def __init__(self, ):
+        super(Identity, self).__init__()
+
+    def forward(self, input):
+        return input
+
+class Conv2dStaticSamePadding(nn.Conv2d):
+    """ 2D Convolutions like TensorFlow, for a fixed image size"""
+
+    def __init__(self, in_channels, out_channels, kernel_size, image_size=224, **kwargs):
+        super().__init__(in_channels, out_channels, kernel_size, **kwargs)
+        self.stride = self.stride if len(self.stride) == 2 else [self.stride[0]] * 2
+
+        # Calculate padding based on image size and save it
+        assert image_size is not None
+        ih, iw = image_size if type(image_size) == list else [image_size, image_size]
+        kh, kw = self.weight.size()[-2:]
+        sh, sw = self.stride
+        oh, ow = math.ceil(ih / sh), math.ceil(iw / sw)
+        pad_h = max((oh - 1) * self.stride[0] + (kh - 1) * self.dilation[0] + 1 - ih, 0)
+        pad_w = max((ow - 1) * self.stride[1] + (kw - 1) * self.dilation[1] + 1 - iw, 0)
+        if pad_h > 0 or pad_w > 0:
+            self.static_padding = nn.ZeroPad2d((pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2))
+        else:
+            self.static_padding = Identity()
+
+    def forward(self, x):
+        x = self.static_padding(x)
+        x = F.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+        return x
 class Prune:
     '''
     >>>pr = Prune(model, 1, 0.1)
@@ -216,6 +251,17 @@ class Prune:
         print('prune rate (l2) for all index: (1 for no pruning)', self.compress_rate)
         print('prune rate (dist) for all index: (1 for no pruning)', self.distance_rate)
 
+    def do_mask(self):
+        for index, item in enumerate(self.model.parameters()):
+            if index in self.mask_index:
+                a = item.data.view(self.model_length[index])
+                b = a * self.mat[index].cpu()
+                item.data = b.view(self.model_size[index])
+
+                a = item.data.view(self.model_length[index])
+                b = a * self.similar_matrix[index]
+                item.data = b.view(self.model_size[index])
+
     def get_filter_codebook(self, weight_torch, compress_rate, length):
         codebook = np.ones(length)
         if len(weight_torch.size()) == 4:  # if kernel
@@ -338,7 +384,7 @@ class KernelGarbageCollector:
         self.new_modules = {}
 
     def _is_module_pass(self, module_name):
-        modules_in_eff = ['conv', 'bn', 'se']
+        modules_in_eff = ['conv', 'bn', 'se', 'fc']
 
         modules_to_pass = ['padding', 'drop', 'swish']
         for module in modules_to_pass:
@@ -367,7 +413,7 @@ class KernelGarbageCollector:
                     output_channel = self.model_kernel_length[index] - len(self.pruned_kernel_idx[index])
                     if 'depthwise' in name:
                         module.groups = output_channel
-                    tmp_conv = nn.Conv2d(previous_channel,
+                    tmp_conv = Conv2dStaticSamePadding(previous_channel,
                                          output_channel,
                                          kernel_size=module.kernel_size,
                                          stride=module.stride,
@@ -385,6 +431,9 @@ class KernelGarbageCollector:
                                             affine=module.affine,
                                             track_running_stats=module.track_running_stats)
                     self.new_modules[name] = tmp_bn
+                if 'fc' in name:
+                    tmp_fc = nn.Linear(previous_channel,output_channel, bias=True)
+                    self.new_modules[name] = tmp_fc
                 previous_channel = output_channel
 
     def copy_unpruned_layers(self):
@@ -439,16 +488,12 @@ if __name__ == '__main__':
     model = EfficientNet.from_name('efficientnet-b0')
     model = torch.nn.DataParallel(model).cuda()
 
-    loc = 'cuda:{}'.format(args.gpu)
-    checkpoint = torch.load(args.pth_path, map_location=loc)
-    model.load_state_dict(checkpoint['state_dict'])
+    # loc = 'cuda:{}'.format(args.gpu)
+    # checkpoint = torch.load(args.pth_path, map_location=loc)
+    # model.load_state_dict(checkpoint['state_dict'])
 
-    criterion = nn.CrossEntropyLoss().cuda()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=args.weight_decay,
-                                  amsgrad=False)
-    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs * int(1281167 / args.batch_size), eta_min=0,
-                                  last_epoch=-1)
 
+    model = model.module.cpu()
     se1 = SizeEstimator(model, input_size=(1, 3, 224, 224))
     param_size1 = se1.get_parameter_sizes()
     act_size1 = se1.get_output_sizes()
@@ -461,19 +506,31 @@ if __name__ == '__main__':
     pruned_kernel_idx = pr.get_pruned_kernel_idx()
     model_kernel_length = pr.get_model_kernel_length()
     pr.if_zero()
+    model = pr.model
+    GC = KernelGarbageCollector(model, pruned_kernel_idx, model_kernel_length, look_up_table)
+    GC.make_new_layer()
+    GC.overwrite_unpruned_layers()
 
+    model = GC.model
+
+    print(model)
     se2 = SizeEstimator(model, input_size=(1, 3, 224, 224))
     param_size2 = se2.get_parameter_sizes()
     act_size2 = se2.get_output_sizes()
     size2 = param_size2 + act_size2
-    pruned_ratio = (1 - (size1 / size2))
+    pruned_ratio = (1 - (size2 / size1))
 
     print('pruned ratio:', pruned_ratio)
     print('from:', size1, 'to:', size2)
 
+    model = torch.nn.DataParallel(model).cuda()
+    criterion = nn.CrossEntropyLoss().cuda()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-08,
+                                  weight_decay=args.weight_decay,
+                                  amsgrad=False)
+    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs * int(1281167 / args.batch_size), eta_min=0,
+                                  last_epoch=-1)
 
-    # model = pr.model
-    # model = torch.nn.DataParallel(model).cuda()
     best_acc1 = 0
     for epoch in range(0, args.epochs):
         train(train_loader, model, criterion, optimizer, epoch, args)

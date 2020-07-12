@@ -6,4 +6,4 @@ CUDA_VISIBLE_DEVICES=$GPUS python3 prune.py \
 	--lr 1e-5 \
 	--epochs 100  \
 	--batch_size 64 \
-	--pth_path './checkpoint/EfficientNet.pth'
+	--pth_path 'EfficientNet_13737:92.26'

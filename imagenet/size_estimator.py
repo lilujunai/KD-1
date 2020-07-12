@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import torchvision
+from efficientnet.model import EfficientNet
 
 class SizeEstimator(object):
 
@@ -56,8 +58,12 @@ class SizeEstimator(object):
             if isinstance(m, nn.Linear):
                 input_ = input_.view(self.input_size[0], -1)
             # print(colored(input_.shape, 'green'))
+
+            print(np.array(input_.shape))
             out = m(input_)
-            out_sizes.append(np.array(out.detach().cpu()))
+            print(m)
+            print(np.array(out.shape))
+            out_sizes.append(np.array(out.shape))
             input_ = out
 
         total_activation = 0
@@ -65,10 +71,24 @@ class SizeEstimator(object):
         self.out_sizes = out_sizes
         for i in range(len(out_sizes)):
             s = out_sizes[i]
-            act = np.count_nonzero(s)
+            act = np.prod(np.array(s))
 
             total_activation += act
 
         return total_activation
 
+if __name__ == '__main__':
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+    net = torchvision.models.resnet152()
+    net = EfficientNet.from_name('efficientnet-b0')
+    print(net)
+    # net = net.to(device)
+    # net = torch.nn.DataParallel(net)
+    # checkpoint = torch.load('ResNet95.57.pth')
+    # net.load_state_dict(checkpoint['net'])
+    se = SizeEstimator(net, input_size=(1,3,224,224))
+    act = se.get_output_sizes()
+    param = se.get_parameter_sizes()
+    print(act,param)
+    print(act+param)

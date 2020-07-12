@@ -46,12 +46,12 @@ transform_test = transforms.Compose([
 ])
 
 trainset = torchvision.datasets.CIFAR10(
-    root='./data', train=True, download=False, transform=transform_train)
+    root='/data', train=True, download=False, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(
     trainset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=15)
 
 testset = torchvision.datasets.CIFAR10(
-    root='./data', train=False, download=False, transform=transform_test)
+    root='/data', train=False, download=False, transform=transform_test)
 testloader = torch.utils.data.DataLoader(
     testset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=15)
 
@@ -190,14 +190,25 @@ class Prune:
 
     def get_layer_length(self):
         length = 0
-        for index, item in enumerate(model.parameters()):
+        for index, item in enumerate(self.model.parameters()):
             length = index
         print('number of layers in model: ', length)
         return length
 
+    def do_mask(self):
+        for index, item in enumerate(self.model.parameters()):
+            if index in self.mask_index:
+                a = item.data.view(self.model_length[index])
+                b = a * self.mat[index].cpu()
+                item.data = b.view(self.model_size[index])
+
+                a = item.data.view(self.model_length[index])
+                b = a * self.similar_matrix[index]
+                item.data = b.view(self.model_size[index])
+
     def get_skip_connections(self):
         skip_connection_idx = []
-        for index, (name, item) in enumerate(model.named_parameters()):
+        for index, (name, item) in enumerate(self.model.named_parameters()):
             if self.skip_connect_name in name:
                 skip_connection_idx.append(index)
                 skip_connection_idx.append(index + 1)  # consequtive bn.weight after conv
@@ -207,7 +218,7 @@ class Prune:
 
     def get_model_idx_dict(self):
         index_dict = {}
-        for index, (name, item) in enumerate(model.named_parameters()):
+        for index, (name, item) in enumerate(self.model.named_parameters()):
             index_dict[index] = name
         return index_dict
 
@@ -232,7 +243,7 @@ class Prune:
         for index, (name, item) in enumerate(self.model.named_parameters()):
             if index in self.mask_index:
                 # mask for norm criterion
-                print(index, name)
+                # print(index, name)
                 self.mat[index] = self.get_filter_codebook(item.data, self.compress_rate[index],
                                                            self.model_length[index])
                 self.mat[index] = torch.FloatTensor(self.mat[index])
@@ -308,7 +319,7 @@ class Prune:
             norm2_np = norm2.cpu().numpy()
             filter_small_index = []  # not used
             filter_small_index = norm2_np.argsort()[:filter_pruned_num]  # not used [:0]
-            print('pruning idx by l2 norm: ', filter_small_index)
+            # print('pruning idx by l2 norm: ', filter_small_index)
             filter_large_index = []
             filter_large_index = norm2_np.argsort()[filter_pruned_num:]
             # median based pruning (interested)
@@ -326,7 +337,7 @@ class Prune:
             similar_small_index = similar_sum.argsort()[:similar_pruned_num]  # small distance
             similar_index_for_filter = [filter_large_index[i] for i in
                                         similar_small_index]  # using filter_large_index[i] because of torch.index_select
-            print('pruning idx by dist: ', similar_index_for_filter)
+            # print('pruning idx by dist: ', similar_index_for_filter)
             kernel_length = weight_torch.size()[1] * weight_torch.size()[2] * weight_torch.size()[3]
             for x in range(0, len(similar_index_for_filter)):
                 codebook[
@@ -377,7 +388,7 @@ class Prune:
 
     def look_up_table(self):
         look_up_table = {}
-        print('look up table')
+        # print('look up table')
         for i, (n, p) in enumerate(self.model.named_parameters()):
             look_up_table[n] = i
         return look_up_table
@@ -386,7 +397,7 @@ class KernelGarbageCollector:
     '''
     >>>GC = KernelGarbageCollector(model, pruned_kernel_idx, model_kernel_length, look_up_table)
     >>>GC.make_new_layer()
-    >>>GC.cop y_unpruned_layers()
+    >>>GC.copy_unpruned_layers()
     >>>GC.overwrite_unpruned_layers()
     '''
     def __init__(self, model, pruned_kernel_idx, model_kernel_length, look_up_table):
@@ -397,9 +408,9 @@ class KernelGarbageCollector:
         self.new_modules = {}
 
     def _is_module_pass(self, module_name):
-        modules_in_eff = ['conv', 'bn', 'se']
+        modules_in_eff = ['conv', 'bn', 'se1','se2','linear']
 
-        modules_to_pass = ['padding', 'drop', 'swish']
+        modules_to_pass = ['padding', 'drop', 'relu']
         for module in modules_to_pass:
             if module in module_name:
                 return True
@@ -424,7 +435,7 @@ class KernelGarbageCollector:
 
                 if 'conv' in name or 'se' in name:
                     output_channel = self.model_kernel_length[index] - len(self.pruned_kernel_idx[index])
-                    if 'depthwise' in name:
+                    if 'conv2' in name: # conv2 = depthwise conv
                         module.groups = output_channel
                     tmp_conv = nn.Conv2d(previous_channel,
                                          output_channel,
@@ -444,7 +455,11 @@ class KernelGarbageCollector:
                                             affine=module.affine,
                                             track_running_stats=module.track_running_stats)
                     self.new_modules[name] = tmp_bn
+                if 'linear' in name:
+                    tmp_linear = nn.Linear(previous_channel, module.out_features, bias=True)
+                    self.new_modules[name] = tmp_linear
                 previous_channel = output_channel
+                # print(name, self.new_modules[name])
 
     def copy_unpruned_layers(self):
         previous_pruned_channel = torch.range(0, 2, dtype=int)
@@ -453,38 +468,85 @@ class KernelGarbageCollector:
                 pre_name = name[:-7]  # delete .weight in string
             elif '.bias' in name:
                 pre_name = name[:-5]  # delete .bias in string
-            print(name)
+
 
             if 'bn' in name:
                 for i, idx in enumerate(unpruned_layers_idx):
                     #                     print('bn', i)
                     if 'weight' in name:
                         self.new_modules[pre_name].weight[i] = module[idx]
+                        # self.new_modules[pre_name].weight[i].grad_fn = module[idx].grad_fn
                     elif 'bias' in name:
                         self.new_modules[pre_name].bias[i] = module[idx]
 
             elif 'conv' in name or 'se' in name:
-                if 'depth' in name:
+                if 'conv2' in name:  # conv2 = depthwise conv
                     unpruned_layers_idx = set(range(self.model_kernel_length[index])) - set(
                         self.pruned_kernel_idx[index])
                     unpruned_layers_idx = list(unpruned_layers_idx)
 
                     for i, idx in enumerate(unpruned_layers_idx):
-                        self.new_modules[pre_name].weight[i] = module[idx]
+                        self.new_modules[pre_name].weight[i] = module[idx].double().requires_grad_()
+                        print(self.new_modules[pre_name].weight[i].grad_fn)
                     previous_pruned_channel = torch.tensor(unpruned_layers_idx)
 
                 else:
                     if 'weight' in name:
+
                         unpruned_layers_idx = set(range(self.model_kernel_length[index])) - set(
                             self.pruned_kernel_idx[index])
                         unpruned_layers_idx = list(unpruned_layers_idx)
 
                         for i, idx in enumerate(unpruned_layers_idx):
                             self.new_modules[pre_name].weight[i] = module[idx].index_select(dim=0,
-                                                                                            index=previous_pruned_channel)
+                                                                                            index=previous_pruned_channel).double().requires_grad_()
+
+                        # print(name, self.new_modules[pre_name])
                         previous_pruned_channel = torch.tensor(unpruned_layers_idx, dtype=int)
                     elif 'bias' in name:
                         pass
+
+    def copy_unpruned_layers_nyw(self):
+        previous_pruned_channel = torch.range(0, 2, dtype=int)
+        for index, (name, module) in enumerate(self.model.named_parameters()):
+            print(name)
+            continue
+            if 'bn' in name:
+                for i, idx in enumerate(unpruned_layers_idx):
+                    #                     print('bn', i)
+                    if 'weight' in name:
+                        self.new_modules[pre_name].weight[i] = module[idx]
+                        # self.new_modules[pre_name].weight[i].grad_fn = module[idx].grad_fn
+                    elif 'bias' in name:
+                        self.new_modules[pre_name].bias[i] = module[idx]
+
+            elif 'conv' in name or 'se' in name:
+                if 'conv2' in name:  # conv2 = depthwise conv
+                    unpruned_layers_idx = set(range(self.model_kernel_length[index])) - set(
+                        self.pruned_kernel_idx[index])
+                    unpruned_layers_idx = list(unpruned_layers_idx)
+
+                    for i, idx in enumerate(unpruned_layers_idx):
+                        self.new_modules[pre_name].weight[i] = module[idx].double().requires_grad_()
+                        print(self.new_modules[pre_name].weight[i].grad_fn)
+                    previous_pruned_channel = torch.tensor(unpruned_layers_idx)
+
+                else:
+                    if 'weight' in name:
+
+                        unpruned_layers_idx = set(range(self.model_kernel_length[index])) - set(
+                            self.pruned_kernel_idx[index])
+                        unpruned_layers_idx = list(unpruned_layers_idx)
+
+                        for i, idx in enumerate(unpruned_layers_idx):
+                            self.new_modules[pre_name].weight[i] = module[idx].index_select(dim=0,
+                                                                                            index=previous_pruned_channel).double().requires_grad_()
+
+                        # print(name, self.new_modules[pre_name])
+                        previous_pruned_channel = torch.tensor(unpruned_layers_idx, dtype=int)
+                    elif 'bias' in name:
+                        pass
+
 
     def overwrite_unpruned_layers(self):
         for key in self.new_modules:
@@ -493,6 +555,8 @@ class KernelGarbageCollector:
                 self.model._modules[keys[0]] = self.new_modules[key]
             elif len(keys) == 3:
                 self.model._modules[keys[0]][int(keys[1])]._modules[keys[2]] = self.new_modules[key]
+            elif len(keys) == 4:\
+                self.model._modules[keys[0]][int(keys[1])]._modules[keys[2]]._modules[keys[3]] = self.new_modules[key]
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -509,12 +573,9 @@ if __name__ == '__main__':
     best_acc = checkpoint['acc']
     start_epoch = 0
 
-    optimizer = torch.optim.AdamW(net.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01,
-                                  amsgrad=False)
-    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs * int(50000 / args.batch_size), eta_min=0,
-                                  last_epoch=-1)
+    net = net.module.cpu()
 
-    se1 = SizeEstimator(net, input_size=(1,3,32,32))
+    se1 = SizeEstimator(net, input_size=(1, 3, 32, 32))
     param_size1 = se1.get_parameter_sizes()
     act_size1 = se1.get_output_sizes()
     size1 = param_size1 + act_size1
@@ -526,26 +587,42 @@ if __name__ == '__main__':
     pruned_kernel_idx = pr.get_pruned_kernel_idx()
     model_kernel_length = pr.get_model_kernel_length()
     pr.if_zero()
+    net = pr.model
+    GC = KernelGarbageCollector(net, pruned_kernel_idx, model_kernel_length, look_up_table)
+    GC.make_new_layer()
+    GC.copy_unpruned_layers_nyw()
+    GC.overwrite_unpruned_layers()
+
+    net = GC.model
+
+    net = net.to(device)
 
     se2 = SizeEstimator(net, input_size=(1, 3, 32, 32))
     param_size2 = se2.get_parameter_sizes()
     act_size2 = se2.get_output_sizes()
     size2 = param_size2 + act_size2
-    pruned_ratio = (1-(size1/size2))
+    print(act_size2)
+
+    pruned_ratio = (1-(size2/size1) * 100)
 
     print('pruned ratio:', pruned_ratio)
     print('from:', size1, 'to:', size2)
 
-    # net = pr.model
-    # net = net.to(device)
-    # if device == 'cuda':
-    #     net = torch.nn.DataParallel(net)
+    print(net)
 
+    net = net.to(device)
+    if device == 'cuda':
+        net = torch.nn.DataParallel(net)
+
+    optimizer = torch.optim.AdamW(net.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01,
+                                  amsgrad=False)
+    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs * int(50000 / args.batch_size), eta_min=0,
+                                  last_epoch=-1)
     end_epoch = args.epochs
     epoch_tmp = 0
     acc_tmp = 0
     for epoch in range(start_epoch + end_epoch):
-        train_acc = train(epoch, scheduler)
+        # train_acc = train(epoch, scheduler)
         test_acc = test(epoch)
 
         if acc_tmp < test_acc:

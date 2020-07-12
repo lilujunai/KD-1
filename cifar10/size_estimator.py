@@ -16,8 +16,7 @@ class SizeEstimator(object):
 
     def get_parameter_sizes(self):
         '''Get sizes of all parameters in `model`'''
-        sizes=sum([p.numel() for p in self.model.parameters()])
-
+        sizes = sum([np.prod(p.size()) for p in self.model.parameters()])
         return sizes
 
     def check_modules(self, module_name):
@@ -28,9 +27,9 @@ class SizeEstimator(object):
         return False
 
     def check_modules_for_act(self, module_name):
-        modules_in_eff = ['conv', 'bn', 'se', 'fc', 'pool']
+        modules_in_eff = ['conv',  'se', 'fc', 'pool']
 
-        modules_to_pass = ['padding', 'drop', 'swish']
+        modules_to_pass = ['padding', 'bn','drop', 'swish']
         for module in modules_to_pass:
             if module in module_name:
                 return False
@@ -52,23 +51,24 @@ class SizeEstimator(object):
             mods.append(m)
         out_sizes = []
 
-        for i in range(len(mods)): t
+        for i in range(len(mods)):
             m = mods[i]
             if isinstance(m, nn.Linear):
                 input_ = input_.view(self.input_size[0], -1)
-            # print(colored(input_.shape, 'green'))
+            print(input_.shape)
             out = m(input_)
-            out_sizes.append(np.array(out.detach().cpu()))
-            print(out.shape)
+            out_sizes.append(np.array(out.shape))
+
+
             input_ = out
 
         total_activation = 0
 
-        self.out_sizes = out_sizes
         for i in range(len(out_sizes)):
             s = out_sizes[i]
-            act = np.count_nonzero(s)
 
+            act = np.prod(np.array(s))
+            # print(s)
             total_activation += act
 
         return total_activation
@@ -76,7 +76,7 @@ class SizeEstimator(object):
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    net = EfficientNetB0()
+    net = ResNet152()
     # net = net.to(device)
     # net = torch.nn.DataParallel(net)
     # checkpoint = torch.load('ResNet95.57.pth')
@@ -84,4 +84,5 @@ if __name__ == '__main__':
     se = SizeEstimator(net, input_size=(1,3,32,32))
     act = se.get_output_sizes()
     param = se.get_parameter_sizes()
+    print(act,param)
     print(act+param)

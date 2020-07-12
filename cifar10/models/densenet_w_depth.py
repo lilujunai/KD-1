@@ -37,9 +37,9 @@ class channel_selection(nn.Module):
         return output
 
 class BasicBlock(nn.Module):
-    def __init__(self, inplanes, cfg, expansion=1, growthRate=12, dropRate=0): an object in Python if the function I am doing this from is the base class of which the class of the instance has been derived?
+    def __init__(self, inplanes, cfg, expansion=1, growthRate=12, dropRate=0): # an object in Python if the function I am doing this from is the base class of which the class of the instance has been derived?
+# Was thinking maybe the inspect module might have helped me out here, but it doesn't seem to give me what I want. And short of parsing the __class__ member, I'm not sure how to get at this information.
 
-Was thinking maybe the inspect module might have helped me out here, but it doesn't seem to give me what I want. And short of parsing the __class__ member, I'm not sure how to get at this information.
         super(BasicBlock, self).__init__()
         planes = expansion * growthRate
         self.bn1 = nn.BatchNorm2d(inplanes)
