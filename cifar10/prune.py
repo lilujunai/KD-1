@@ -63,16 +63,16 @@ criterion = nn.CrossEntropyLoss()
 
 def train(epoch, scheduler):
     print('\nEpoch: %d' % epoch)
-    net.train()
+    net.model.train()
     train_loss = 0
     correct = 0
     total = 0
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
-        outputs = net(inputs)
+        outputs = net.model(inputs)
         loss = criterion(outputs, targets)
-
+        net.do_grad_mask()
         loss.backward()
         optimizer.step()
 
@@ -88,14 +88,14 @@ def train(epoch, scheduler):
 
 def test(epoch):
     global best_acc
-    net.eval()
+    net.model.eval()
     test_loss = 0
     correct = 0
     total = 0
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(testloader):
             inputs, targets = inputs.to(device), targets.to(device)
-            outputs = net(inputs)
+            outputs = net.model(inputs)
             loss = criterion(outputs, targets)
 
             test_loss += loss.item()
@@ -111,7 +111,7 @@ def test(epoch):
     if acc > best_acc:
         print(colored('Saving..', 'red'), end='')
         state = {
-            'net': net.state_dict(),
+            'net': net.model.state_dict(),
             'acc': acc,
             'epoch': epoch,
         }
@@ -597,13 +597,13 @@ if __name__ == '__main__':
     pruned_kernel_idx = pr.get_pruned_kernel_idx()
     model_kernel_length = pr.get_model_kernel_length()
     pr.if_zero()
-    net = pr.model
-    GC = KernelGarbageCollector(net, pruned_kernel_idx, model_kernel_length, look_up_table)
-    GC.make_new_layer()
-    GC.copy_unpruned_layers_nyw()
-    GC.overwrite_unpruned_layers()
+    net = pr
+    # GC = KernelGarbageCollector(net, pruned_kernel_idx, model_kernel_length, look_up_table)
+    # GC.make_new_layer()
+    # GC.copy_unpruned_layers_nyw()
+    # GC.overwrite_unpruned_layers()
 
-    net = GC.model
+    # net = GC.model
 
     net = net.to(device)
 
@@ -632,7 +632,7 @@ if __name__ == '__main__':
     epoch_tmp = 0
     acc_tmp = 0
     for epoch in range(start_epoch + end_epoch):
-        # train_acc = train(epoch, scheduler)
+        train_acc = train(epoch, scheduler)
         test_acc = test(epoch)
 
         if acc_tmp < test_acc:
@@ -647,4 +647,5 @@ if __name__ == '__main__':
         'acc': acc_tmp,
         'epoch': epoch_tmp,
     }
+    pr.if_zero()
     torch.save(state, './checkpoint/{}:{:.2f}.pth'.format(net_name, acc_tmp))
