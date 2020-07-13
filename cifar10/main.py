@@ -23,6 +23,8 @@ parser.add_argument('--kd', action='store_true')
 parser.add_argument('--epochs', default=300, type=int)
 parser.add_argument('-a', '--arch', metavar='ARCH', default='efficientnet-b0')
 parser.add_argument('-b', '--batch_size', default=64, type=int)
+parser.add_argument('--sp', '--student_path', default = './checkpoint/EfficientNet:92.02.pth', type=str)
+parser.add_argument('--tp', '--teacher_path', default = './checkpoint/ResNet:93.80.pth', type=str)
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -69,10 +71,11 @@ if args.kd:
     net = net.to(device)
     t_net = t_net.to(device)
     if device == 'cuda':
+        net = torch.nn.DataParallel(net)
         t_net = torch.nn.DataParallel(t_net)
         cudnn.benchmark = True
 
-    checkpoint = torch.load('./ResNet95.57.pth')
+    checkpoint = torch.load(args.tp)
     t_net.load_state_dict(checkpoint['net'])
 
 else:
@@ -81,13 +84,18 @@ else:
     elif args.arch == 'efficientnet-b0':
         net = EfficientNetB0()
 
+if not args.sp == '':
+    checkpoint = torch.load('./checkpoint/EfficientNet:92.02.pth')
+    net.load_state_dict(checkpoint['net'])
+    args.lr = 6e-7
+
 net_name = net.__class__.__name__
 net = net.to(device)
-
+t_net = t_net.to(device)
 if device == 'cuda':
     net = torch.nn.DataParallel(net)
     cudnn.benchmark = True
-
+    t_net = torch.nn.DataParallel(t_net)
 if args.resume:
     # Load checkpoint.
     print('==> Resuming from checkpoint..')
@@ -130,7 +138,7 @@ if args.kd:
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
 
-            progress_bar(batch_idx, len(trainloader), 'Loss: {:.3f} | Acc: {:4.3f} (%d/%d)'
+            progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %5.3f%% (%d/%d)'
                          % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
         scheduler.step()
         return 100. * correct / total
@@ -217,6 +225,8 @@ if __name__ == '__main__':
         if acc_tmp < test_acc:
             acc_tmp = test_acc
             epoch_tmp = epoch
+        if test_acc > 93.75:
+            break
         train_accs.append(train_acc)
         test_accs.append(test_accs)
     print('=============================')
