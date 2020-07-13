@@ -20,7 +20,7 @@ parser.add_argument('data', metavar='DIR',
                     help='path to dataset')
 parser.add_argument('--l2', default=0.97, type=float, help='l2 norm pruning (1 = no pruning)')
 parser.add_argument('--dist', default=0.09, type=float, help='median filter pruning (0 = no pruning)')
-parser.add_argument('--lr', default=6e-4, type=float, help='learning rate')
+parser.add_argument('--lr', default=6e-3, type=float, help='learning rate')
 parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('-b', '--batch_size', default=64, type=int)
 parser.add_argument('--pth_path', default='./checkpoint/EfficientNet.pth', type=str)
@@ -29,7 +29,7 @@ parser.add_argument('--wd', '--weight-decay', default=1e-5, type=float,
                     dest='weight_decay')
 parser.add_argument('-p', '--print-freq', default=2000, type=int,
                     metavar='N', help='print frequency (default: 10)')
-parser.add_argument('--save_path', default='', type=str)
+parser.add_argument('--save_path', default='pruned', type=str)
 parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--gpu', default=None, type=int,
