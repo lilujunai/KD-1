@@ -20,7 +20,7 @@ parser.add_argument('data', metavar='DIR',
                     help='path to dataset')
 parser.add_argument('--l2', default=0.97, type=float, help='l2 norm pruning (1 = no pruning)')
 parser.add_argument('--dist', default=0.09, type=float, help='median filter pruning (0 = no pruning)')
-parser.add_argument('--lr', default=1e-6, type=float, help='learning rate')
+parser.add_argument('--lr', default=6e-4, type=float, help='learning rate')
 parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('-b', '--batch_size', default=64, type=int)
 parser.add_argument('--pth_path', default='./checkpoint/EfficientNet.pth', type=str)
@@ -34,6 +34,7 @@ parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
+parser.add_argument('-a', '--arch', metavar='ARCH', default='efficientnet-b0')
 args = parser.parse_args()
 
 traindir = os.path.join(args.data, 'train')
