@@ -522,7 +522,7 @@ def main_worker(gpu, ngpus_per_node, args):
         #writer.add_scalars('acc1', acc1, epoch)
         is_best = acc1 > best_acc1
         if acc1 < 65:
-            print(colored('not saving... accuracy smaller than 65',' green'))
+            print(colored('not saving... accuracy smaller than 65','green'))
             is_best = False
         best_acc1 = max(acc1, best_acc1)
 
