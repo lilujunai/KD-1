@@ -1,3 +1,5 @@
+import time
+
 from scipy.spatial import distance
 import torch.nn as nn
 import torch
@@ -15,8 +17,8 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from termcolor import colored
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 pruning')
-parser.add_argument('--l2', default=1., type=float, help='l2 norm pruning (1 = no pruning)')
-parser.add_argument('--dist', default=0.9, type=float, help='median filter pruning (0 = no pruning)')
+parser.add_argument('--l2', default=0.98, type=float, help='l2 norm pruning (1 = no pruning)')
+parser.add_argument('--dist', default=0.05, type=float, help='median filter pruning (0 = no pruning)')
 parser.add_argument('--lr', default=1e-6, type=float, help='learning rate')
 parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('-b', '--batch_size', default=64, type=int)
@@ -61,67 +63,194 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer',
 criterion = nn.CrossEntropyLoss()
 
 
-def train(epoch, scheduler):
-    print('\nEpoch: %d' % epoch)
-    net.model.train()
-    train_loss = 0
-    correct = 0
-    total = 0
-    for batch_idx, (inputs, targets) in enumerate(trainloader):
-        inputs, targets = inputs.to(device), targets.to(device)
+# def train(epoch, scheduler):
+#     print('\nEpoch: %d' % epoch)
+#     net.train()
+#     train_loss = 0
+#     correct = 0
+#     total = 0
+#     for batch_idx, (inputs, targets) in enumerate(trainloader):
+#         inputs, targets = inputs.to(device), targets.to(device)
+#         optimizer.zero_grad()
+#         outputs = net(inputs)
+#         loss = criterion(outputs, targets)
+#         pr.do_grad_mask()
+#         loss.backward()
+#         optimizer.step()
+#
+#         train_loss += loss.item()
+#         _, predicted = outputs.max(1)
+#         total += targets.size(0)
+#         correct += predicted.eq(targets).sum().item()
+#
+#         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %4.3f%% (%d/%d)'
+#                      % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
+#     scheduler.step()
+#     return 100. * correct / total
+
+# def test(epoch):
+#     global best_acc
+#     net.eval()
+#     test_loss = 0
+#     correct = 0
+#     total = 0
+#     with torch.no_grad():
+#         for batch_idx, (inputs, targets) in enumerate(testloader):
+#             inputs, targets = inputs.to(device), targets.to(device)
+#             outputs = net(inputs)
+#             loss = criterion(outputs, targets)
+#
+#             test_loss += loss.item()
+#             _, predicted = outputs.max(1)
+#             total += targets.size(0)
+#             correct += predicted.eq(targets).sum().item()
+#
+#             progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+#                          % (test_loss / (batch_idx + 1), 100. * correct / total, correct, total))
+#
+#     # Save checkpoint.
+#     acc = 100. * correct / total
+#     if acc > best_acc:
+#         print(colored('Saving..', 'red'), end='')
+#         state = {
+#             'net': net.model.state_dict(),
+#             'acc': acc,
+#             'epoch': epoch,
+#         }
+#         if not os.path.isdir('checkpoint'):
+#             os.mkdir('checkpoint')
+#
+#         torch.save(state, './checkpoint/{}.pth'.format(net_name))
+#         best_acc = acc
+#
+#     return best_acc
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+def accuracy(output, target, topk=(1,)):
+    """Computes the precision@k for the specified values of k"""
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = []
+    for k in topk:
+        correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+        res.append(correct_k.mul_(100.0 / batch_size))
+    return res
+def train(train_loader, model, criterion, optimizer, epoch, m):
+    batch_time = AverageMeter()
+    data_time = AverageMeter()
+    losses = AverageMeter()
+    top1 = AverageMeter()
+    top5 = AverageMeter()
+
+    # switch to train mode
+    model.train()
+
+    end = time.time()
+    for i, (input, target) in enumerate(train_loader):
+        # measure data loading time
+        data_time.update(time.time() - end)
+
+        target = target.cuda()
+        input_var = torch.autograd.Variable(input)
+        target_var = torch.autograd.Variable(target)
+
+        # compute output
+        output = model(input_var)
+        loss = criterion(output, target_var)
+
+        # measure accuracy and record loss
+        prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+        losses.update(loss.item(), input.size(0))
+        top1.update(prec1[0], input.size(0))
+        top5.update(prec5[0], input.size(0))
+
+        # compute gradient and do SGD step
         optimizer.zero_grad()
-        outputs = net.model(inputs)
-        loss = criterion(outputs, targets)
-        net.do_grad_mask()
         loss.backward()
+
+        # Mask grad for iteration
+        m.do_grad_mask()
         optimizer.step()
 
-        train_loss += loss.item()
-        _, predicted = outputs.max(1)
-        total += targets.size(0)
-        correct += predicted.eq(targets).sum().item()
+        # measure elapsed time
+        batch_time.update(time.time() - end)
+        end = time.time()
 
-        progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %4.3f%% (%d/%d)'
-                     % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
-    scheduler.step()
-    return 100. * correct / total
+        if i % 1000 == 0:
+            print('Epoch: [{0}][{1}/{2}]\t'
+                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                      'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                      'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                      'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
+                      'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                epoch, i, len(train_loader), batch_time=batch_time,
+                data_time=data_time, loss=losses, top1=top1, top5=top5))
 
-def test(epoch):
-    global best_acc
-    net.model.eval()
-    test_loss = 0
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for batch_idx, (inputs, targets) in enumerate(testloader):
-            inputs, targets = inputs.to(device), targets.to(device)
-            outputs = net.model(inputs)
-            loss = criterion(outputs, targets)
 
-            test_loss += loss.item()
-            _, predicted = outputs.max(1)
-            total += targets.size(0)
-            correct += predicted.eq(targets).sum().item()
+def validate(val_loader, model, criterion):
+    batch_time = AverageMeter()
+    losses = AverageMeter()
+    top1 = AverageMeter()
+    top5 = AverageMeter()
 
-            progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-                         % (test_loss / (batch_idx + 1), 100. * correct / total, correct, total))
+    # switch to evaluate mode
+    model.eval()
 
-    # Save checkpoint.
-    acc = 100. * correct / total
-    if acc > best_acc:
-        print(colored('Saving..', 'red'), end='')
-        state = {
-            'net': net.model.state_dict(),
-            'acc': acc,
-            'epoch': epoch,
-        }
-        if not os.path.isdir('checkpoint'):
-            os.mkdir('checkpoint')
+    end = time.time()
+    for i, (input, target) in enumerate(val_loader):
+        with torch.no_grad():
+            target = target.cuda()
+            input_var = torch.autograd.Variable(input)
+            target_var = torch.autograd.Variable(target)
 
-        torch.save(state, './checkpoint/{}.pth'.format(net_name))
-        best_acc = acc
+            # compute output
+            output = model(input_var)
+            loss = criterion(output, target_var)
 
-    return best_acc
+            # measure accuracy and record loss
+            prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+            losses.update(loss.item(), input.size(0))
+            top1.update(prec1[0], input.size(0))
+            top5.update(prec5[0], input.size(0))
+
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
+
+        if i % 1000 == 0:
+            print('Test: [{0}/{1}]\t'
+                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                      'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                      'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
+                      'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                i, len(val_loader), batch_time=batch_time, loss=losses,
+                top1=top1, top5=top5))
+
+    print(' * Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f} Error@1 {error1:.3f}'.format(top1=top1, top5=top5,
+                                                                                           error1=100 - top1.avg))
+
+    return top1.avg
 
 class Prune:
     '''
@@ -144,7 +273,7 @@ class Prune:
         self.similar_matrix = {}
         self.pruning_params_name = ['conv', 'se']
         self.skip_connect_name = 'project'
-        self.layers_not_interested_name = ['bn']
+        self.layers_not_interested_name = ['bn', 'se.bias']
         self.rate_norm_per_layer = l1_prune_ratio
         self.rate_dist_per_layer = median_pruning_ratio
         self.model_idx_dict = self.get_model_idx_dict()
@@ -209,11 +338,11 @@ class Prune:
     def do_grad_mask(self):
         for index, item in enumerate(self.model.parameters()):
             if index in self.mask_index:
-                a = item.grad.data.view(self.model_length[index])
+                a = item.grad.data.view(self.model_length[index]).cuda()
                 # reverse the mask of model
                 # b = a * (1 - self.mat[index])
-                b = a * self.mat[index]
-                b = b * self.similar_matrix[index]
+                b = a * self.mat[index].cuda()
+                b = b * self.similar_matrix[index].cuda()
                 item.grad.data = b.view(self.model_size[index])
 
     def get_skip_connections(self):
@@ -578,7 +707,7 @@ if __name__ == '__main__':
         net = torch.nn.DataParallel(net)
         cudnn.benchmark = True
 
-    checkpoint = torch.load('./checkpoint/{}.pth'.format(args.pth_path))
+    checkpoint = torch.load('{}'.format(args.pth_path))
     net.load_state_dict(checkpoint['net'])
     best_acc = checkpoint['acc']
     start_epoch = 0
@@ -597,7 +726,7 @@ if __name__ == '__main__':
     pruned_kernel_idx = pr.get_pruned_kernel_idx()
     model_kernel_length = pr.get_model_kernel_length()
     pr.if_zero()
-    net = pr
+    net = pr.model
     # GC = KernelGarbageCollector(net, pruned_kernel_idx, model_kernel_length, look_up_table)
     # GC.make_new_layer()
     # GC.copy_unpruned_layers_nyw()
@@ -613,12 +742,11 @@ if __name__ == '__main__':
     size2 = param_size2 + act_size2
     print(act_size2)
 
-    pruned_ratio = (1-(size2/size1) * 100)
+    pruned_ratio = ((size2/size1) * 100)
 
     print('pruned ratio:', pruned_ratio)
     print('from:', size1, 'to:', size2)
-
-    print(net)
+    print('=========================')
 
     net = net.to(device)
     if device == 'cuda':
@@ -632,8 +760,8 @@ if __name__ == '__main__':
     epoch_tmp = 0
     acc_tmp = 0
     for epoch in range(start_epoch + end_epoch):
-        train_acc = train(epoch, scheduler)
-        test_acc = test(epoch)
+        train_acc = train(train_loader=trainloader, model=net, criterion=criterion, optimizer=optimizer, epoch=epoch, m=pr)
+        test_acc = validate(val_loader=testloader, model=net, criterion=criterion)
 
         if acc_tmp < test_acc:
             acc_tmp = test_acc

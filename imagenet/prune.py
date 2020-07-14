@@ -385,7 +385,7 @@ class KernelGarbageCollector:
         self.new_modules = {}
 
     def _is_module_pass(self, module_name):
-        modules_in_eff = ['conv', 'bn', 'se', 'fc']
+        modules_in_eff = ['conv', 'bn', 'se.weight', 'fc']
 
         modules_to_pass = ['padding', 'drop', 'swish']
         for module in modules_to_pass:
@@ -489,10 +489,9 @@ if __name__ == '__main__':
     model = EfficientNet.from_name('efficientnet-b0')
     model = torch.nn.DataParallel(model).cuda()
 
-    # loc = 'cuda:{}'.format(args.gpu)
-    # checkpoint = torch.load(args.pth_path, map_location=loc)
-    # model.load_state_dict(checkpoint['state_dict'])
-
+    loc = 'cuda:{}'.format(args.gpu)
+    checkpoint = torch.load(args.pth_path, map_location=loc)
+    model.load_state_dict(checkpoint['state_dict'])
 
     model = model.module.cpu()
     se1 = SizeEstimator(model, input_size=(1, 3, 224, 224))
