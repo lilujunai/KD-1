@@ -1,6 +1,6 @@
 MODEL='efficientnet-b0'
-BATCH_SIZE=64
-GPUS=13
+BATCH_SIZE=256
+GPUS=15,16,17,18,19
 
 echo "start: $(date)"
 CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /data/Imagenet      \

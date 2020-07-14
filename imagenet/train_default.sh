@@ -1,6 +1,6 @@
 MODEL='efficientnet-b0'
 
-GPUS=0,1,2,3,4
+GPUS=16,17,18,19
 
 echo "start: $(date)"
 CUDA_VISIBLE_DEVICES=$GPUS python3 main.py /data/Imagenet      \

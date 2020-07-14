@@ -782,4 +782,6 @@ if __name__ == '__main__':
         'epoch': epoch_tmp,
     }
     pr.if_zero()
+    
     torch.save(state, './checkpoint/{}.pth'.format(net_name))
+
