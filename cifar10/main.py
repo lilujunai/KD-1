@@ -197,9 +197,9 @@ def test(epoch):
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
 
-        torch.save(state, './checkpoint/{}.pth'.format(net_name))
         best_acc = acc
-        
+        torch.save(state, './checkpoint/{}:{:.2f}.pth'.format(net_name, best_acc))
+
     return best_acc
 
 def kd_criterion(o_student, o_teacher, labels, T=3, w=0.8):
@@ -222,8 +222,10 @@ if __name__ == '__main__':
         if acc_tmp < test_acc:
             acc_tmp = test_acc
             epoch_tmp = epoch
-        train_accs.append(train_acc)
-        test_accs.append(test_accs)
+
+        if test_acc > 93.75:
+            break
+        
     print('=============================')
     print('best accuracy:', test_acc)
     print('best epoch:', epoch_tmp)
@@ -232,9 +234,9 @@ if __name__ == '__main__':
                 'acc': acc_tmp,
                 'epoch': epoch_tmp,
             }
-    epochs = list(range(end_epoch))
+    # epochs = list(range(end_epoch))
     
     # plt.plot(epochs, test_accs, label='test')
     # plt.legend()
     # plt.savefig('accs.png')
-    torch.save(state, './checkpoint/{}:{:.2f}.pth'.format(net_name,acc_tmp))
+    torch.save(state, './checkpoint/{}.pth'.format(net_name))
