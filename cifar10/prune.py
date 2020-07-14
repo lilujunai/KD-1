@@ -22,7 +22,7 @@ parser.add_argument('--dist', default=0.05, type=float, help='median filter prun
 parser.add_argument('--lr', default=6e-4, type=float, help='learning rate')
 parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('-b', '--batch_size', default=64, type=int)
-parser.add_argument('--pth_path', default='./checkpoint/EfficientNet.pth', type=str)
+parser.add_argument('--pth_path', default='./checkpoint/EfficientNet:93.83.pth', type=str)
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -703,13 +703,14 @@ if __name__ == '__main__':
 
     if device == 'cuda':
         net = torch.nn.DataParallel(net)
+        net = torch.nn.DataParallel(net)
         cudnn.benchmark = True
 
     checkpoint = torch.load('{}'.format(args.pth_path))
     net.load_state_dict(checkpoint['net'])
     best_acc = checkpoint['acc']
     start_epoch = 0
-
+    net = net.module
     net = net.module.cpu()
 
     # se1 = SizeEstimator(net, input_size=(1, 3, 32, 32))
