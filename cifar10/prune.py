@@ -714,10 +714,10 @@ if __name__ == '__main__':
 
     net = net.module.cpu()
 
-    se1 = SizeEstimator(net, input_size=(1, 3, 32, 32))
-    param_size1 = se1.get_parameter_sizes()
-    act_size1 = se1.get_output_sizes()
-    size1 = param_size1 + act_size1
+    # se1 = SizeEstimator(net, input_size=(1, 3, 32, 32))
+    # param_size1 = se1.get_parameter_sizes()
+    # act_size1 = se1.get_output_sizes()
+    # size1 = param_size1 + act_size1
 
     pr = Prune(net, args.l2, args.dist)
     look_up_table = pr.look_up_table()
@@ -736,17 +736,17 @@ if __name__ == '__main__':
 
     net = net.to(device)
 
-    se2 = SizeEstimator(net, input_size=(1, 3, 32, 32))
-    param_size2 = se2.get_parameter_sizes()
-    act_size2 = se2.get_output_sizes()
-    size2 = param_size2 + act_size2
-    print(act_size2)
+    # se2 = SizeEstimator(net, input_size=(1, 3, 32, 32))
+    # param_size2 = se2.get_parameter_sizes()
+    # act_size2 = se2.get_output_sizes()
+    # size2 = param_size2 + act_size2
+    # print(act_size2)
+    #
+    # pruned_ratio = ((size2/size1) * 100)
 
-    pruned_ratio = ((size2/size1) * 100)
-
-    print('pruned ratio:', pruned_ratio)
-    print('from:', size1, 'to:', size2)
-    print('=========================')
+    # print('pruned ratio:', pruned_ratio)
+    # print('from:', size1, 'to:', size2)
+    # print('=========================')
 
     net = net.to(device)
     if device == 'cuda':
@@ -766,7 +766,13 @@ if __name__ == '__main__':
         if acc_tmp < test_acc:
             acc_tmp = test_acc
             epoch_tmp = epoch
-
+            if acc_tmp > 90.:
+                state = {
+                    'net': net.state_dict(),
+                    'acc': acc_tmp,
+                    'epoch': epoch_tmp,
+                }
+                torch.save(state, './checkpoint/{}:{:.2f}.pth'.format(net_name, acc_tmp))
     print('=============================')
     print('best accuracy:', test_acc)
     print('best epoch:', epoch_tmp)
@@ -776,4 +782,4 @@ if __name__ == '__main__':
         'epoch': epoch_tmp,
     }
     pr.if_zero()
-    torch.save(state, './checkpoint/{}:{:.2f}.pth'.format(net_name, acc_tmp))
+    torch.save(state, './checkpoint/{}.pth'.format(net_name))
