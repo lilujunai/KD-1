@@ -254,8 +254,8 @@ def main_worker(gpu, ngpus_per_node, args):
         args.lr = 0.048
         args.bs = 384
         optimizer = torch.optim.RMSprop(
-            model.parameters, lr=args.lr, alpha=0.9, eps=.001,
-            momentum=0.9, weight_decay=args.wd)
+            model.parameters(), lr=args.lr, alpha=0.9, eps=.001,
+            momentum=0.9, weight_decay=args.weight_decay)
 
         from typing import Dict, Any
         class Scheduler:
@@ -537,7 +537,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 'optimizer' : optimizer.state_dict(),
             }, is_best, teacher_name=teacher_name, student_name=student_name, save_path=args.save_path, acc=acc1)
 
-        scheduler.step()
+        scheduler.step(epoch)
 #####################################################################################
 
 if __name__ == '__main__':

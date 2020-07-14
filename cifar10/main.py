@@ -78,24 +78,21 @@ if args.kd:
     checkpoint = torch.load(args.tp)
     t_net.load_state_dict(checkpoint['net'])
 
+    if not args.sp == '':
+        checkpoint = torch.load('./checkpoint/EfficientNet:92.02.pth')
+        net.load_state_dict(checkpoint['net'])
+        args.lr = 6e-7
 else:
     if args.arch == 'resnet152':
         net = ResNet152()
     elif args.arch == 'efficientnet-b0':
         net = EfficientNetB0()
 
-if not args.sp == '':
-    checkpoint = torch.load('./checkpoint/EfficientNet:92.02.pth')
-    net.load_state_dict(checkpoint['net'])
-    args.lr = 6e-7
-
 net_name = net.__class__.__name__
 net = net.to(device)
-t_net = t_net.to(device)
 if device == 'cuda':
     net = torch.nn.DataParallel(net)
     cudnn.benchmark = True
-    t_net = torch.nn.DataParallel(t_net)
 if args.resume:
     # Load checkpoint.
     print('==> Resuming from checkpoint..')
@@ -225,8 +222,6 @@ if __name__ == '__main__':
         if acc_tmp < test_acc:
             acc_tmp = test_acc
             epoch_tmp = epoch
-        if test_acc > 93.75:
-            break
         train_accs.append(train_acc)
         test_accs.append(test_accs)
     print('=============================')
