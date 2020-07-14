@@ -17,12 +17,12 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from termcolor import colored
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 pruning')
-parser.add_argument('--l2', default=0.98, type=float, help='l2 norm pruning (1 = no pruning)')
-parser.add_argument('--dist', default=0.05, type=float, help='median filter pruning (0 = no pruning)')
+parser.add_argument('--l2', default=0.995, type=float, help='l2 norm pruning (1 = no pruning)')
+parser.add_argument('--dist', default=0.06, type=float, help='median filter pruning (0 = no pruning)')
 parser.add_argument('--lr', default=6e-4, type=float, help='learning rate')
-parser.add_argument('--epochs', default=100, type=int)
-parser.add_argument('-b', '--batch_size', default=64, type=int)
-parser.add_argument('--pth_path', default='./checkpoint/EfficientNet:93.83.pth', type=str)
+parser.add_argument('--epochs', default=300, type=int)
+parser.add_argument('-b', '--batch_size', default=128, type=int)
+parser.add_argument('--pth_path', default='./checkpoint/EfficientNet_13737:92.26.pth', type=str)
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -703,16 +703,14 @@ if __name__ == '__main__':
 
     if device == 'cuda':
         net = torch.nn.DataParallel(net)
-        net = torch.nn.DataParallel(net)
         cudnn.benchmark = True
 
     checkpoint = torch.load('{}'.format(args.pth_path))
     net.load_state_dict(checkpoint['net'])
     best_acc = checkpoint['acc']
     start_epoch = 0
-    net = net.module
     net = net.module.cpu()
-
+    #
     # se1 = SizeEstimator(net, input_size=(1, 3, 32, 32))
     # param_size1 = se1.get_parameter_sizes()
     # act_size1 = se1.get_output_sizes()
@@ -730,11 +728,11 @@ if __name__ == '__main__':
     # GC.make_new_layer()
     # GC.copy_unpruned_layers_nyw()
     # GC.overwrite_unpruned_layers()
-
+    #
     # net = GC.model
-
-    net = net.to(device)
-
+    #
+    # net = net.to(device)
+    #
     # se2 = SizeEstimator(net, input_size=(1, 3, 32, 32))
     # param_size2 = se2.get_parameter_sizes()
     # act_size2 = se2.get_output_sizes()
@@ -742,7 +740,7 @@ if __name__ == '__main__':
     # print(act_size2)
     #
     # pruned_ratio = ((size2/size1) * 100)
-
+    #
     # print('pruned ratio:', pruned_ratio)
     # print('from:', size1, 'to:', size2)
     # print('=========================')
@@ -765,7 +763,7 @@ if __name__ == '__main__':
         if acc_tmp < test_acc:
             acc_tmp = test_acc
             epoch_tmp = epoch
-            if acc_tmp > 90.:
+            if acc_tmp > 91.:
                 state = {
                     'net': net.state_dict(),
                     'acc': acc_tmp,

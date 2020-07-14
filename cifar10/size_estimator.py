@@ -55,7 +55,7 @@ class SizeEstimator(object):
             m = mods[i]
             if isinstance(m, nn.Linear):
                 input_ = input_.view(self.input_size[0], -1)
-            print(input_.shape)
+            # print(input_.shape)
             out = m(input_)
             out_sizes.append(np.array(out.shape))
 

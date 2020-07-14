@@ -18,7 +18,7 @@ from termcolor import colored
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from utils import ImageFolder_iid, save_checkpoint
 
-from src import RMSpropTF, add_weight_decay, StepLRScheduler, EMA
+from KD_tmp.imagenet.src import RMSpropTF, add_weight_decay, StepLRScheduler, EMA
 from efficientnet.model import EfficientNet
 from run import train_kd, validate_kd, train, validate, kd_criterion
 import resnet
@@ -254,14 +254,11 @@ def main_worker(gpu, ngpus_per_node, args):
         scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs * int(1281167 / args.batch_size), eta_min=0,
                                       last_epoch=-1)
         args.lr = 0.048
-        args.batch_size = 64
+        args.batch_size = 384
         parameters = add_weight_decay(model, 1e-5)
         optimizer = RMSpropTF(
             parameters, lr=0.048, alpha=0.9, eps=0.001,
             momentum=args.momentum, weight_decay=1e-5)
-        optimizer = torch.optim.RMSprop(
-            model.parameters(), lr=args.lr, alpha=0.9, eps=.001,
-            momentum=0.9, weight_decay=args.weight_decay)
 
         scheduler = StepLRScheduler(
             optimizer,
