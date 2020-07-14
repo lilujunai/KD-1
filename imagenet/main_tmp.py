@@ -18,7 +18,7 @@ from termcolor import colored
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from utils import ImageFolder_iid, save_checkpoint
 
-from KD_tmp.imagenet.src import RMSpropTF, add_weight_decay, StepLRScheduler, EMA
+from KD.imagenet.src import RMSpropTF, add_weight_decay, StepLRScheduler, EMA
 from efficientnet.model import EfficientNet
 from run import train_kd, validate_kd, train, validate, kd_criterion
 import resnet
