@@ -22,7 +22,7 @@ parser.add_argument('--dist', default=0.05, type=float, help='median filter prun
 parser.add_argument('--lr', default=1e-6, type=float, help='learning rate')
 parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('-b', '--batch_size', default=64, type=int)
-parser.add_argument('--pth_path', default='./checkpoint/EfficientNet.pth', type=str)
+parser.add_argument('--pth_path', default='./checkpoint/EfficientNet:93.83.pth', type=str)
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -705,13 +705,14 @@ if __name__ == '__main__':
 
     if device == 'cuda':
         net = torch.nn.DataParallel(net)
+        net = torch.nn.DataParallel(net)
         cudnn.benchmark = True
 
     checkpoint = torch.load('{}'.format(args.pth_path))
     net.load_state_dict(checkpoint['net'])
     best_acc = checkpoint['acc']
     start_epoch = 0
-
+    net = net.module
     net = net.module.cpu()
 
     se1 = SizeEstimator(net, input_size=(1, 3, 32, 32))
@@ -766,7 +767,13 @@ if __name__ == '__main__':
         if acc_tmp < test_acc:
             acc_tmp = test_acc
             epoch_tmp = epoch
-
+            best_state = {
+              'net': net.state_dict(),
+              'acc': acc_tmp,
+              'epoch': epoch_tmp,
+            }
+            if acc_tmp > 90:
+                torch.save(state, './checkpoint/{}:{:.2f}.pth'.format(net_name,acc_tmp))
     print('=============================')
     print('best accuracy:', test_acc)
     print('best epoch:', epoch_tmp)
@@ -776,4 +783,4 @@ if __name__ == '__main__':
         'epoch': epoch_tmp,
     }
     pr.if_zero()
-    torch.save(state, './checkpoint/{}:{:.2f}.pth'.format(net_name, acc_tmp))
+    torch.save(state, './checkpoint/{}.pth'.format(net_name))
