@@ -19,7 +19,7 @@ from termcolor import colored
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 pruning')
 parser.add_argument('--l2', default=0.98, type=float, help='l2 norm pruning (1 = no pruning)')
 parser.add_argument('--dist', default=0.05, type=float, help='median filter pruning (0 = no pruning)')
-parser.add_argument('--lr', default=1e-6, type=float, help='learning rate')
+parser.add_argument('--lr', default=6e-4, type=float, help='learning rate')
 parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('-b', '--batch_size', default=64, type=int)
 parser.add_argument('--pth_path', default='./checkpoint/EfficientNet.pth', type=str)
@@ -206,8 +206,6 @@ def train(train_loader, model, criterion, optimizer, epoch, m):
                       'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                 epoch, i, len(train_loader), batch_time=batch_time,
                 data_time=data_time, loss=losses, top1=top1, top5=top5))
-
-
 def validate(val_loader, model, criterion):
     batch_time = AverageMeter()
     losses = AverageMeter()
@@ -773,6 +771,8 @@ if __name__ == '__main__':
                     'epoch': epoch_tmp,
                 }
                 torch.save(state, './checkpoint/{}:{:.2f}.pth'.format(net_name, acc_tmp))
+        if test_acc >= 93.82:
+            break
     print('=============================')
     print('best accuracy:', test_acc)
     print('best epoch:', epoch_tmp)
@@ -782,6 +782,6 @@ if __name__ == '__main__':
         'epoch': epoch_tmp,
     }
     pr.if_zero()
-    
+
     torch.save(state, './checkpoint/{}.pth'.format(net_name))
 

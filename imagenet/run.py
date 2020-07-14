@@ -112,7 +112,7 @@ def validate_kd(val_loader, teacher, model, criterion, args):
 
     return top1.avg
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(train_loader, model, criterion, optimizer, epoch, args, ema):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -149,14 +149,14 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
+        ema.update()
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
 
         if i % args.print_freq == 0:
             progress.display(i)
-def validate(val_loader, model, criterion, args):
+def validate(val_loader, model, criterion, args, ema):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
@@ -165,7 +165,7 @@ def validate(val_loader, model, criterion, args):
         len(val_loader),
         [batch_time, losses, top1, top5],
         prefix='Test: ')
-
+    ema.apply_shadow()
     # switch to evaluate mode
     model.eval()
 
@@ -196,6 +196,7 @@ def validate(val_loader, model, criterion, args):
         # TODO: this should also be done with the ProgressMeter
         print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
               .format(top1=top1, top5=top5))
+    ema.restore()
 
     return top1.avg
 
